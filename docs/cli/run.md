@@ -54,6 +54,40 @@ A background thread interrogates `nvidia-smi` every 0.5 seconds throughout each 
 
 ---
 
+## Custom prompts
+
+Every benchmark uses the same default prompts so results are reproducible and comparable across runs. If you want to test your model against prompts closer to your actual workload, create a `custom_prompts.json` at the repo root:
+
+```bash
+cp custom_prompts.example.json custom_prompts.json
+# edit it, then run as usual
+typhon-run
+```
+
+The file overrides only the keys you define. The rest fall back to the defaults.
+
+```json
+{
+  "short":     "What is the capital of France?",
+  "medium":    "Explain how TCP/IP works to a junior developer in under 300 words.",
+  "long":      "Write a comprehensive guide on REST API design best practices.",
+  "very_long": "Write a 1500-word guide on distributed systems fundamentals."
+}
+```
+
+Valid keys: `short`, `medium`, `long`, `very_long`. The file is gitignored — it stays local to your machine.
+
+When active, the run header confirms it:
+
+```
+  📝  Prompts: custom_prompts.json
+```
+
+!!! tip "Reproducibility"
+    Fixed prompts exist so you can compare run A vs run B and know the difference is your hardware or server config — not the question. If you change prompts between runs, treat those results as a separate experiment.
+
+---
+
 ## The three waves
 
 ```
