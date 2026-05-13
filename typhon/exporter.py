@@ -5,7 +5,6 @@ Strips paths, hostnames, and anything identifiable. Produces a PR-ready JSON.
 """
 
 import json
-import hashlib
 from pathlib import Path
 from datetime import datetime
 

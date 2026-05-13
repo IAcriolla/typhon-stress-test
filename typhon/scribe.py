@@ -41,6 +41,9 @@ def flatten_run(run: dict) -> list[dict]:
         if bench["successful_runs"] == 0:
             continue
 
+        # Per-benchmark GPU stats (accurate); fall back to run-level for old data
+        gpu_stats = bench.get("gpu_stats") or run.get("gpu_stats", {})
+
         row = {
             # ── Identifiers ──────────────────────────────────
             "run_at":           run.get("run_at"),
@@ -71,7 +74,7 @@ def flatten_run(run: dict) -> list[dict]:
             "avg_elapsed_s":    bench["avg_elapsed_s"],
             "successful_runs":  bench["successful_runs"],
 
-            # ── GPU health (from monitor) ─────────────────────
+            # ── GPU health (per-benchmark monitor snapshot) ───────────────────────
             "peak_vram_used_mb":    gpu_stats.get("peak_vram_used_mb"),
             "avg_vram_used_mb":     gpu_stats.get("avg_vram_used_mb"),
             "peak_temp_c":          gpu_stats.get("peak_temp_c"),

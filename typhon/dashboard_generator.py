@@ -633,7 +633,6 @@ def generate_html(d: dict) -> str:
         "%%BENCHMARKS%%":    json.dumps(d["benchmarks"]),
         "%%HIST_ROWS%%":     json.dumps(d["hist_rows"]),
         "%%BASELINE_TPS%%":  str(d["baseline_tps"]),
-        "%%GPU_VRAM_GB%%":   str(d["gpu_vram_gb"]),
         "%%AVG_UTIL_RAW%%":  str(d["avg_util"]),
     }
     html = HTML_TEMPLATE

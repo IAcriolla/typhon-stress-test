@@ -9,8 +9,8 @@ import platform
 import subprocess
 import shutil
 import re
-import os
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
 
@@ -171,37 +171,45 @@ KNOWN_SERVERS = [
     {"name": "Jan",                      "port": 1337,  "health": "/v1/models", "models": "/v1/models"},
 ]
 
-def detect_llm_servers():
-    """Probe known LLM server ports."""
-    found = []
-    for server in KNOWN_SERVERS:
-        url = f"http://localhost:{server['port']}{server['health']}"
+def _probe_one(server: dict) -> dict | None:
+    """Probe a single LLM server. Returns entry dict or None if not running."""
+    url = f"http://localhost:{server['port']}{server['health']}"
+    try:
+        resp = requests.get(url, timeout=2)
+        if resp.status_code not in (200, 204):
+            return None
+        entry = {
+            "name": server["name"],
+            "port": server["port"],
+            "api_base": f"http://localhost:{server['port']}",
+            "status": "running",
+            "models": [],
+        }
         try:
-            resp = requests.get(url, timeout=2)
-            if resp.status_code in (200, 204):
-                entry = {
-                    "name": server["name"],
-                    "port": server["port"],
-                    "api_base": f"http://localhost:{server['port']}",
-                    "status": "running",
-                }
-                # Try to get model list
-                try:
-                    models_url = f"http://localhost:{server['port']}{server['models']}"
-                    mr = requests.get(models_url, timeout=2)
-                    if mr.status_code == 200:
-                        data = mr.json()
-                        # OpenAI-compat format
-                        if "data" in data:
-                            entry["models"] = [m["id"] for m in data["data"]]
-                        # Ollama format
-                        elif "models" in data:
-                            entry["models"] = [m["name"] for m in data["models"]]
-                except Exception:
-                    entry["models"] = []
-                found.append(entry)
+            models_url = f"http://localhost:{server['port']}{server['models']}"
+            mr = requests.get(models_url, timeout=2)
+            if mr.status_code == 200:
+                data = mr.json()
+                if "data" in data:
+                    entry["models"] = [m["id"] for m in data["data"]]
+                elif "models" in data:
+                    entry["models"] = [m["name"] for m in data["models"]]
         except Exception:
             pass
+        return entry
+    except Exception:
+        return None
+
+def detect_llm_servers():
+    """Probe all known LLM server ports in parallel."""
+    found = []
+    with ThreadPoolExecutor(max_workers=len(KNOWN_SERVERS)) as executor:
+        futures = {executor.submit(_probe_one, s): s for s in KNOWN_SERVERS}
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                found.append(result)
+    found.sort(key=lambda x: x["port"])
     return found
 
 def detect_python_packages():
