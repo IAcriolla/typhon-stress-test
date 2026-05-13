@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "typhon-llm"
 version = "2.0.0"
-description = "Local LLM Stress Test & Optimization Suite"
+description = "Local LLM stress testing and optimization suite"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
-keywords = ["llm", "benchmark", "stress-test", "local-ai", "xgboost", "gpu"]
+keywords = ["llm", "benchmark", "local-ai", "gpu", "xgboost", "inference"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Environment :: GPU :: NVIDIA CUDA",
 ]
 dependencies = [
     "requests>=2.31.0",
@@ -31,17 +32,19 @@ dependencies = [
     "scikit-learn>=1.3.0",
 ]
 
+[project.urls]
+Homepage    = "https://github.com/IAcriolla/typhon-stress-test"
+Repository  = "https://github.com/IAcriolla/typhon-stress-test"
+Issues      = "https://github.com/IAcriolla/typhon-stress-test/issues"
+
 [project.scripts]
-typhon-scan        = "typhon.cli:cmd_scan"
-typhon-run         = "typhon.cli:cmd_run"
-typhon-dashboard   = "typhon.cli:cmd_dashboard"
-typhon-train       = "typhon.cli:cmd_train"
-typhon-recommend   = "typhon.cli:cmd_recommend"
-typhon-export      = "typhon.cli:cmd_export"
+typhon-scan       = "typhon.cli:cmd_scan"
+typhon-run        = "typhon.cli:cmd_run"
+typhon-dashboard  = "typhon.cli:cmd_dashboard"
+typhon-train      = "typhon.cli:cmd_train"
+typhon-recommend  = "typhon.cli:cmd_recommend"
+typhon-export     = "typhon.cli:cmd_export"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where   = ["."]
 include = ["typhon*"]
-
-[tool.setuptools.package-data]
-typhon = ["*.py"]

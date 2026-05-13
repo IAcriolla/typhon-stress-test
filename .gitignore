@@ -1,29 +1,31 @@
-# Local data (do not commit)
-data/hardware_profile.json
-data/last_run.json
-data/chronicle.jsonl
+# ── Runtime data (local only) ──────────────────────────────────
+data/*
+!data/.gitkeep
 
-# Trained models
-models/*.pkl
+# ── Trained models ─────────────────────────────────────────────
+models/*
+!models/.gitkeep
 
-# Python
+# ── Generated output ───────────────────────────────────────────
+typhon-dashboard.html
+
+# ── Python ─────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
 build/
 .eggs/
+
+# ── Virtual environments ────────────────────────────────────────
 venv/
 .venv/
 env/
-*.egg-info/
+.env/
 
-# Generated dashboard
-typhon-dashboard.html
-
-# Exports (submit to community_data/ via PR if you want to share)
-data/typhon_export_*.json
-
-# OS
+# ── OS / editors ───────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+*.swp
