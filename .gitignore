@@ -2,6 +2,9 @@
 data/*
 !data/.gitkeep
 
+# ── Custom prompts (personal, not committed) ────────────────────
+custom_prompts.json
+
 # ── Trained models ─────────────────────────────────────────────
 models/*
 !models/.gitkeep

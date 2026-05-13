@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy this file to custom_prompts.json to override benchmark prompts.",
+  "_comment2": "Only include the keys you want to change — the rest use the defaults.",
+  "_comment3": "Valid keys: short, medium, long, very_long",
+
+  "short": "What is the capital of France?",
+
+  "medium": "You are a helpful assistant. Explain how TCP/IP works to a junior developer. Keep your answer under 300 words.",
+
+  "long": "You are a senior software engineer. Explain the SOLID principles with one concrete code example for each principle. Be thorough.",
+
+  "very_long": "You are a technical writer. Write a comprehensive guide on REST API design best practices, covering: resource naming, HTTP methods, status codes, versioning, authentication, pagination, error handling, and documentation. Write at least 1500 words."
+}

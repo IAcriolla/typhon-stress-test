@@ -121,6 +121,17 @@ PROMPTS = {
     ),
 }
 
+# Merge custom prompts from custom_prompts.json if it exists.
+# Any key present in the file overrides the default above.
+_CUSTOM_PROMPTS_PATH = ROOT / "custom_prompts.json"
+if _CUSTOM_PROMPTS_PATH.exists():
+    try:
+        _custom = json.loads(_CUSTOM_PROMPTS_PATH.read_text(encoding="utf-8"))
+        PROMPTS.update({k: v for k, v in _custom.items() if isinstance(v, str) and v.strip()})
+    except Exception as _e:
+        print(f"  ⚠️  Could not load custom_prompts.json: {_e}")
+
+
 def build_test_plan(profile: dict, mode: str) -> list:
     """Determine which tests to run based on hardware and mode."""
     gpus = profile.get("gpus", [])
@@ -288,6 +299,8 @@ def run_benchmarks(profile: dict, mode: str, on_progress=None) -> dict:
 
     print(f"  🖥️  Server: {server['name']} @ {api_base}")
     print(f"  🤖  Model:  {model}")
+    if _CUSTOM_PROMPTS_PATH.exists():
+        print(f"  📝  Prompts: custom_prompts.json")
     print()
 
     tests = build_test_plan(profile, mode)
