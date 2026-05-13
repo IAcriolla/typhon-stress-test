@@ -1,19 +1,29 @@
-# Typhon Gitignore
+# Data local (no pushear)
+data/hardware_profile.json
+data/last_run.json
+data/chronicle.jsonl
+
+# Modelos entrenados locales
+models/*.pkl
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-.env
-.venv
-env/
+*.egg-info/
+dist/
+build/
+.eggs/
 venv/
+.venv/
+env/
 
-# Typhon Specifics
-logs/
-models/
-chronicle.json
+# Dashboard generado
+typhon-dashboard.html
 
-# OS/System
+# Exports (se pushean a community_data/ si el usuario quiere)
+data/typhon_export_*.json
+
+# OS
 .DS_Store
 Thumbs.db
