@@ -8,6 +8,7 @@ models/*
 
 # ── Generated output ───────────────────────────────────────────
 typhon-dashboard.html
+site/
 
 # ── Python ─────────────────────────────────────────────────────
 __pycache__/

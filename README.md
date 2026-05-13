@@ -10,6 +10,7 @@
   [![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)](https://www.python.org)
   [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macos-lightgrey?style=flat-square)]()
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
+  [![Docs](https://img.shields.io/badge/docs-mkdocs-blue?style=flat-square)](https://iacriolla.github.io/typhon-stress-test)
 </div>
 
 <br/>
@@ -17,6 +18,8 @@
 Typhon detects your hardware, runs a tailored benchmark suite, generates an interactive dashboard, and trains a machine learning model to recommend the optimal configuration for your specific setup.
 
 Built for anyone running LLMs locally — from first-time tinkerers to hardware enthusiasts.
+
+**[→ Full documentation](https://iacriolla.github.io/typhon-stress-test)**
 
 ## Quick start
 
@@ -26,14 +29,12 @@ cd typhon-stress-test
 pip install -e .
 ```
 
-`pip install -e .` registers all `typhon-*` commands in your shell. Then:
+`pip install -e .` registers all `typhon-*` commands in your shell. Start your LLM server, then:
 
 ```bash
 typhon-scan    # 1. detect your hardware and any running LLM servers
 typhon-run     # 2. run the benchmark suite (auto-opens dashboard when done)
 ```
-
-That's the core loop. Start your LLM server before running `typhon-run` — see [Supported servers](#supported-servers) if you're not sure which port it uses.
 
 For subsequent runs you can skip the scan:
 
@@ -46,7 +47,7 @@ typhon-run --full     # complete suite, ~15–20 min (default)
 
 ### `typhon-scan`
 
-Auto-detects your full hardware and software profile and saves it to `data/hardware_profile.json`. Discovers GPU (name, VRAM, driver), CPU (model, cores), RAM, any running LLM servers on their default ports (llama.cpp, Ollama, LM Studio, vLLM, Jan, text-generation-webui), and loaded models on each.
+Auto-detects your full hardware and software profile and saves it to `data/hardware_profile.json`. Discovers GPU (name, VRAM, driver), CPU (model, cores), RAM, any running LLM servers on their default ports, and loaded models on each. All port probes run in parallel — scan completes in ~2 seconds regardless of how many servers are running.
 
 ### `typhon-run`
 
@@ -58,7 +59,7 @@ typhon-run [--quick | --full]
 
 | Flag | Description |
 |------|-------------|
-| `--quick` | Reduced test plan, fewer context sizes. ~3–5 min. Good for quick iteration. |
+| `--quick` | Reduced test plan, fewer context sizes. ~3–5 min. |
 | `--full` | Complete test plan including memory wall detection. ~15–20 min. Default. |
 
 The test plan adapts to your VRAM. A 24 GB card sweeps up to 65 536 token context; an 8 GB card up to 16 384.
@@ -69,6 +70,8 @@ The test plan adapts to your VRAM. A 24 GB card sweeps up to 65 536 token contex
 | `context_sweep` | TPS and latency at each context step. Maps the degradation curve. |
 | `stress` | TPS during a long generation. Detects sustained throughput drop. |
 | `memory_wall` | Finds where VRAM is exhausted and performance collapses. Full mode only. |
+
+Each test discards the first inference (warmup) from its averages to eliminate KV-cache cold-start bias. GPU stats (VRAM, temperature, power) are captured per-benchmark, not as a run-wide aggregate.
 
 ### `typhon-dashboard`
 
@@ -82,7 +85,7 @@ typhon-dashboard [--no-open]
 
 ### `typhon-train`
 
-Trains two XGBoost regressors on your accumulated benchmark data. Requires ≥ 10 records in `data/chronicle.jsonl`. More diverse runs = better accuracy.
+Trains two XGBoost regressors on your accumulated benchmark data. Requires ≥ 10 records in `data/chronicle.jsonl`. Uses K-fold cross-validation for honest error estimates, then retrains on the full dataset.
 
 | Model | Predicts |
 |-------|---------|
@@ -100,23 +103,24 @@ typhon-recommend [--ctx TOKENS] [--model NAME]
 | Flag | Description |
 |------|-------------|
 | `--ctx TOKENS` | Add a specific context size to the prediction table. Example: `--ctx 49152` |
-| `--model NAME` | Model to query. Defaults to the most recent in the chronicle. Example: `--model hermes-3-llama-3.1-8b-q8_0` |
+| `--model NAME` | Model to query. Defaults to the most recent in the chronicle. |
 
 ```
 Hardware: NVIDIA GeForce RTX 3090 — 24.0 GB VRAM
+Model:    hermes-3-llama-3.1-8b-q8_0
 
-    Context    Est. TPS    Est. VRAM       Status
+    Context    Est. TPS    Est. VRAM         Status
     ─────────  ──────────  ────────────  ──────────────
-        2,048    82.4 t/s      8,100 MB      ✅ Safe
-        8,192    51.3 t/s     12,400 MB      ✅ Safe
-       32,768    18.9 t/s     21,800 MB    ⚠️  Near limit
-       65,536     7.2 t/s     25,100 MB    ⛔ OOM risk
+        2,048    82.4 t/s      8,100 MB        ✅ Safe
+        8,192    51.3 t/s     12,400 MB        ✅ Safe
+       32,768    18.9 t/s     21,800 MB   ⚠️  Near limit
+       65,536     7.2 t/s     25,100 MB      ⛔ OOM risk
 
-💡  ctx_size=32,768 — best TPS within safe VRAM range
+💡  ctx_size=32,768 — best TPS within safe VRAM range (18.9 t/s)
     Start llama-server with: --ctx-size 32768 --flash-attn on
 ```
 
-Requires a trained model (`typhon-train`) and hardware profile (`typhon-scan`).
+The recommendation picks the largest context whose predicted VRAM stays below the OOM threshold, maximizing the usable context window while avoiding crashes.
 
 ### `typhon-export`
 
@@ -130,6 +134,28 @@ Exports anonymized benchmark data for community contribution. Strips all persona
 | Model filename (path stripped) | OS version |
 | Benchmark metrics (TPS, VRAM, temp, latency) | |
 | Machine ID (one-way hardware hash) | |
+
+### `typhon-api`
+
+Starts a REST API server for agent integration and programmatic automation. Benchmark jobs run in the background — start a job and poll for results without blocking.
+
+```
+typhon-api [--host HOST] [--port PORT]
+```
+
+```bash
+# Start the server
+typhon-api
+
+# Fire a benchmark job (returns immediately)
+curl -s -X POST "http://localhost:8000/jobs/run?mode=quick"
+# {"job_id": "a3f1c820", "status": "pending", "mode": "quick"}
+
+# Poll for progress and results
+curl -s "http://localhost:8000/jobs/a3f1c820" | jq '{status, progress}'
+```
+
+Interactive API docs at `http://localhost:8000/docs`. See the [REST API documentation](https://iacriolla.github.io/typhon-stress-test/api/) for the full reference.
 
 ## Supported servers
 
@@ -173,12 +199,14 @@ typhon-stress-test/
 │   ├── oracle.py               # XGBoost training and prediction
 │   ├── dashboard_generator.py  # Self-contained HTML dashboard
 │   └── exporter.py             # Anonymized community export
+├── typhon_api/
+│   └── server.py               # FastAPI REST server
+├── docs/                       # MkDocs documentation source
 ├── data/                       # Runtime data — gitignored
 ├── models/                     # Trained models — gitignored
 ├── community_data/             # Community benchmark contributions
 ├── assets/
-├── pyproject.toml
-└── full_cycle.sh
+└── pyproject.toml
 ```
 
 ## Contributing
