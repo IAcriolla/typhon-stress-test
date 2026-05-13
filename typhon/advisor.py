@@ -20,6 +20,17 @@ PROFILE_PATH  = DATA_DIR / "hardware_profile.json"
 LAST_RUN_PATH = DATA_DIR / "last_run.json"
 
 
+def _load_latest_zeus() -> dict | None:
+    """Return the most recent zeus_run_*.json, or None if none exist."""
+    files = sorted(DATA_DIR.glob("zeus_run_*.json"))
+    if not files:
+        return None
+    try:
+        return json.loads(files[-1].read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def _cfg() -> dict:
     return {
         "url":   os.environ.get("TYPHON_LLM_URL",   "").strip(),
@@ -44,7 +55,7 @@ def _detect_model(profile: dict, last_run: dict) -> str:
     return ""
 
 
-def _build_prompt(profile: dict, last_run: dict) -> str:
+def _build_prompt(profile: dict, last_run: dict, zeus_run: dict | None = None) -> str:
     gpus      = profile.get("gpus", [{}])
     gpu0      = gpus[0] if gpus else {}
     cpu       = profile.get("cpu", {})
@@ -127,6 +138,23 @@ def _build_prompt(profile: dict, last_run: dict) -> str:
             lines.append(f"- Failed at: {failed[0]['ctx_size']:,} tokens")
         lines.append("")
 
+    if zeus_run:
+        zeus_results = zeus_run.get("results", [])
+        if zeus_results:
+            lines.append("## Zeus extreme context stress test")
+            for r in zeus_results:
+                label = r.get("ctx_label", f"{r.get('ctx_size', '?'):,}")
+                if r.get("success"):
+                    ttft = f"{r['ttft_s']:.1f}s" if r.get("ttft_s") is not None else "N/A"
+                    tps  = f"{r.get('tps', 0):.1f} t/s"
+                    g    = r.get("gpu_stats") or {}
+                    vram = f"{g['peak_vram_used_mb']:,} MB" if g.get("peak_vram_used_mb") else "—"
+                    temp = f"{g['peak_temp_c']:.0f}°C" if g.get("peak_temp_c") else "—"
+                    lines.append(f"- {label}: TTFT {ttft} | Gen {tps} | VRAM {vram} | Temp {temp}")
+                else:
+                    lines.append(f"- {label}: FAILED — {r.get('error', 'unknown error')}")
+            lines.append("")
+
     lines += [
         "## Respond with:",
         "1. The optimal `--ctx-size` for this setup with your reasoning",
@@ -139,7 +167,7 @@ def _build_prompt(profile: dict, last_run: dict) -> str:
     return "\n".join(lines)
 
 
-def ask_llm(profile: dict, last_run: dict, stream: bool = True) -> str:
+def ask_llm(profile: dict, last_run: dict, stream: bool = True, zeus_run: dict | None = None) -> str:
     """
     Send benchmark context to the configured LLM and return its response.
     Streams to stdout when stream=True; returns full text either way.
@@ -161,7 +189,7 @@ def ask_llm(profile: dict, last_run: dict, stream: bool = True) -> str:
     base_url = url if url.rstrip("/").endswith("/v1") else url.rstrip("/") + "/v1"
 
     client = OpenAI(api_key=key, base_url=base_url)
-    prompt = _build_prompt(profile, last_run)
+    prompt = _build_prompt(profile, last_run, zeus_run=zeus_run)
 
     messages = [
         {
@@ -206,6 +234,7 @@ def ask_data(stream: bool = True) -> dict:
 
     profile  = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
     last_run = json.loads(LAST_RUN_PATH.read_text(encoding="utf-8"))
+    zeus_run = _load_latest_zeus()
 
     cfg   = _cfg()
     url   = cfg["url"] or _detect_url(profile)
@@ -215,7 +244,10 @@ def ask_data(stream: bool = True) -> dict:
 
     print(f"  Endpoint : {url}")
     print(f"  Model    : {model}")
+    if zeus_run:
+        zeus_file = sorted(DATA_DIR.glob("zeus_run_*.json"))[-1].name
+        print(f"  Zeus     : {zeus_file}")
     print()
 
-    response = ask_llm(profile, last_run, stream=stream)
+    response = ask_llm(profile, last_run, stream=stream, zeus_run=zeus_run)
     return {"response": response, "model": model, "endpoint": url}
