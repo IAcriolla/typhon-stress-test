@@ -18,7 +18,7 @@ Typhon detects your hardware, runs a tailored benchmark suite, generates an inte
 
 Built for anyone running LLMs locally — from first-time tinkerers to hardware enthusiasts.
 
-## Install
+## Quick start
 
 ```bash
 git clone https://github.com/IAcriolla/typhon-stress-test.git
@@ -26,23 +26,20 @@ cd typhon-stress-test
 pip install -e .
 ```
 
-`pip install -e .` registers all `typhon-*` commands directly in your shell. No `python` prefix needed.
-
-## Usage
+`pip install -e .` registers all `typhon-*` commands in your shell. Then:
 
 ```bash
-typhon-scan          # detect hardware + running LLM servers
-typhon-run           # run the full benchmark suite
-typhon-dashboard     # open the interactive results dashboard
-typhon-train         # train the XGBoost prediction model
-typhon-recommend     # get optimization recommendations
-typhon-export        # export anonymized data for the community
+typhon-scan    # 1. detect your hardware and any running LLM servers
+typhon-run     # 2. run the benchmark suite (auto-opens dashboard when done)
 ```
 
-Or run scan + benchmark in one shot:
+That's the core loop. Start your LLM server before running `typhon-run` — see [Supported servers](#supported-servers) if you're not sure which port it uses.
+
+For subsequent runs you can skip the scan:
 
 ```bash
-./full_cycle.sh [--quick | --full]
+typhon-run --quick    # fast check, ~3–5 min
+typhon-run --full     # complete suite, ~15–20 min (default)
 ```
 
 ## Commands
