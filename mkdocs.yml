@@ -1,0 +1,89 @@
+site_name: Typhon
+site_description: Local LLM stress testing and optimization — automated.
+site_url: https://iacriolla.github.io/typhon-stress-test
+repo_url: https://github.com/IAcriolla/typhon-stress-test
+repo_name: IAcriolla/typhon-stress-test
+copyright: Copyright &copy; 2025 IAcriolla — MIT License
+
+theme:
+  name: material
+  logo: assets/banner.jpg
+  favicon: assets/banner.jpg
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quick Start: quickstart.md
+  - CLI Reference:
+    - Overview: cli/index.md
+    - typhon-scan: cli/scan.md
+    - typhon-run: cli/run.md
+    - typhon-dashboard: cli/dashboard.md
+    - typhon-train: cli/train.md
+    - typhon-recommend: cli/recommend.md
+    - typhon-export: cli/export.md
+    - typhon-api: cli/api-server.md
+  - REST API:
+    - Overview: api/index.md
+    - Endpoint Reference: api/reference.md
+    - Job Lifecycle: api/jobs.md
+  - The Oracle:
+    - How It Works: oracle/index.md
+    - Training: oracle/training.md
+    - Reading Recommendations: oracle/recommendations.md
+  - Supported Servers: supported-servers.md
+  - Contributing: contributing.md
+
+plugins:
+  - search:
+      lang: en
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/IAcriolla/typhon-stress-test
