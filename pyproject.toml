@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "typhon-llm"
-version = "2.0.0"
+version = "2.1.0"
 description = "Local LLM stress testing and optimization suite"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
-keywords = ["llm", "benchmark", "local-ai", "gpu", "xgboost", "inference"]
+keywords = ["llm", "benchmark", "local-ai", "gpu", "inference"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -26,10 +26,7 @@ classifiers = [
 dependencies = [
     "requests>=2.31.0",
     "psutil>=5.9.0",
-    "numpy>=1.24.0",
-    "pandas>=2.0.0",
-    "xgboost>=2.0.0",
-    "scikit-learn>=1.3.0",
+    "openai>=1.0.0",
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.27.0",
 ]
@@ -43,8 +40,8 @@ Issues      = "https://github.com/IAcriolla/typhon-stress-test/issues"
 typhon-scan       = "typhon.cli:cmd_scan"
 typhon-run        = "typhon.cli:cmd_run"
 typhon-dashboard  = "typhon.cli:cmd_dashboard"
-typhon-train      = "typhon.cli:cmd_train"
-typhon-recommend  = "typhon.cli:cmd_recommend"
+typhon-summary    = "typhon.cli:cmd_summary"
+typhon-ask        = "typhon.cli:cmd_ask"
 typhon-export     = "typhon.cli:cmd_export"
 typhon-api        = "typhon.cli:cmd_api"
 

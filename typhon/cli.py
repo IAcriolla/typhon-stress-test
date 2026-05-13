@@ -7,8 +7,8 @@ standalone shell commands after `pip install -e .`
   typhon-scan        →  detect hardware + LLM servers
   typhon-run         →  run the benchmark suite
   typhon-dashboard   →  generate and open the dashboard
-  typhon-train       →  train the XGBoost Oracle model
-  typhon-recommend   →  get optimization recommendations
+  typhon-summary     →  write a Markdown summary of the last run
+  typhon-ask         →  get LLM-powered recommendations
   typhon-export      →  export anonymized data for community
   typhon-api         →  start the REST API server
 """
@@ -17,7 +17,6 @@ import sys
 import argparse
 from pathlib import Path
 
-# ── Shared banner ────────────────────────────────────────────────
 BANNER = r"""
   ████████╗██╗   ██╗██████╗ ██╗  ██╗ ██████╗ ███╗   ██╗
      ██╔══╝╚██╗ ██╔╝██╔══██╗██║  ██║██╔═══██╗████╗  ██║
@@ -29,11 +28,13 @@ BANNER = r"""
   ─────────────────────────────────────────────────────
 """
 
-ROOT = Path(__file__).parent.parent
+ROOT     = Path(__file__).parent.parent
 DATA_DIR = ROOT / "data"
+
 
 def _print_banner():
     print(BANNER)
+
 
 def _ensure_data_dir():
     DATA_DIR.mkdir(exist_ok=True)
@@ -44,19 +45,6 @@ def _ensure_data_dir():
 # ════════════════════════════════════════════════════════════════
 
 def cmd_scan():
-    """
-    Detect and save your hardware and software profile.
-
-    Scans for:
-      - GPU(s): name, VRAM, driver, compute capability
-      - CPU: model, physical and logical cores
-      - RAM: total and available
-      - LLM servers: probes ports for llama.cpp, Ollama, LM Studio,
-        vLLM, Jan, text-generation-webui — lists loaded models
-      - Python packages: checks required dependencies
-
-    Saves results to data/hardware_profile.json
-    """
     _print_banner()
     _ensure_data_dir()
 
@@ -64,7 +52,7 @@ def cmd_scan():
         prog="typhon-scan",
         description="Detect hardware and LLM software configuration.",
     )
-    parser.parse_args()  # handles --help cleanly
+    parser.parse_args()
 
     print("🔍 Scanning your setup...\n")
     from typhon.scanner import scan
@@ -82,13 +70,6 @@ def cmd_scan():
 # ════════════════════════════════════════════════════════════════
 
 def cmd_run():
-    """
-    Run the full benchmark suite.
-
-    Automatically runs typhon-scan first if no hardware profile exists.
-    Saves results to data/last_run.json, appends to data/chronicle.jsonl,
-    and generates the interactive dashboard.
-    """
     _print_banner()
     _ensure_data_dir()
 
@@ -105,27 +86,16 @@ examples:
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
-        "--quick",
-        action="store_true",
-        help=(
-            "Run a reduced benchmark suite. Tests fewer context sizes and fewer "
-            "runs per test. Takes approximately 3–5 minutes. Good for quick "
-            "configuration checks or when iterating on settings."
-        ),
+        "--quick", action="store_true",
+        help="Reduced suite — fewer context sizes. ~3–5 min.",
     )
     group.add_argument(
-        "--full",
-        action="store_true",
-        help=(
-            "Run the complete benchmark suite including the memory wall detection "
-            "test. Takes approximately 15–20 minutes. Recommended when collecting "
-            "data for the Oracle model. This is the default if no flag is given."
-        ),
+        "--full", action="store_true",
+        help="Complete suite including memory wall detection. ~15–20 min. Default.",
     )
     args = parser.parse_args()
     mode = "quick" if args.quick else "full"
 
-    # Auto-scan if no profile
     profile_path = DATA_DIR / "hardware_profile.json"
     if not profile_path.exists():
         print("⚡ No hardware profile found. Running scan first...\n")
@@ -137,7 +107,6 @@ examples:
 
     print(f"🌪️  Starting benchmark suite (mode: {mode})...\n")
 
-    # Phase 1: Benchmarks
     print("─" * 50)
     print("PHASE 1/3 — Running benchmark suite")
     print("─" * 50)
@@ -151,14 +120,12 @@ examples:
     last_run_path = DATA_DIR / "last_run.json"
     last_run_path.write_text(json.dumps(run_data, indent=2))
 
-    # Phase 2: Chronicle
     print("\n" + "─" * 50)
     print("PHASE 2/3 — Recording results to chronicle")
     print("─" * 50)
     from typhon.scribe import main as scribe_main
     scribe_main()
 
-    # Phase 3: Dashboard
     print("\n" + "─" * 50)
     print("PHASE 3/3 — Generating interactive dashboard")
     print("─" * 50)
@@ -168,8 +135,9 @@ examples:
     dashboard_path = ROOT / "typhon-dashboard.html"
     print("\n" + "═" * 50)
     print("✅  TYPHON MISSION COMPLETE")
-    print(f"📊  Dashboard: {dashboard_path}")
-    print("     Open in your browser to explore results.")
+    print(f"📊  Dashboard : {dashboard_path}")
+    print(f"📝  Summary   : typhon-summary")
+    print(f"🤖  Ask LLM   : typhon-ask")
     print("═" * 50 + "\n")
     sys.exit(0)
 
@@ -179,12 +147,6 @@ examples:
 # ════════════════════════════════════════════════════════════════
 
 def cmd_dashboard():
-    """
-    Regenerate the interactive HTML dashboard and open it in the browser.
-
-    Reads data/last_run.json and data/chronicle.jsonl.
-    Outputs typhon-dashboard.html in the project root.
-    """
     _print_banner()
 
     parser = argparse.ArgumentParser(
@@ -194,12 +156,11 @@ def cmd_dashboard():
         epilog="""
 examples:
   typhon-dashboard           regenerate dashboard and open in browser
-  typhon-dashboard --no-open regenerate dashboard without opening browser
+  typhon-dashboard --no-open regenerate without opening browser
         """,
     )
     parser.add_argument(
-        "--no-open",
-        action="store_true",
+        "--no-open", action="store_true",
         help="Generate the dashboard file but do not open it in the browser.",
     )
     args = parser.parse_args()
@@ -221,169 +182,77 @@ examples:
 
 
 # ════════════════════════════════════════════════════════════════
-# typhon-train
+# typhon-summary
 # ════════════════════════════════════════════════════════════════
 
-def cmd_train():
-    """
-    Train the XGBoost Oracle model on your accumulated chronicle data.
-
-    Trains two regression models:
-      - TPS model: predicts tokens/second for a given hardware + context config
-      - VRAM model: predicts peak VRAM usage in MB
-
-    Requires at least 10 records in data/chronicle.jsonl.
-    Saves trained models to models/oracle_tps.pkl and models/oracle_vram.pkl.
-    """
+def cmd_summary():
     _print_banner()
+    _ensure_data_dir()
 
     parser = argparse.ArgumentParser(
-        prog="typhon-train",
-        description="Train the XGBoost Oracle model on your benchmark data.",
+        prog="typhon-summary",
+        description="Write a Markdown summary of the last benchmark run.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-notes:
-  Requires at least 10 records in the chronicle (data/chronicle.jsonl).
-  Run more benchmarks with `typhon-run` to build up your dataset.
-  The more diverse the runs (different context sizes, models, settings),
-  the more accurate the Oracle predictions will be.
-
 examples:
-  typhon-train
+  typhon-summary
         """,
     )
     parser.parse_args()
 
-    print("🧠 Training Oracle model...\n")
-    from typhon.oracle import train
-    results = train()
-    sys.exit(0 if results else 1)
+    print("📝 Generating summary...\n")
+    from typhon.summarizer import summarize
+    out = summarize()
+    sys.exit(0 if out else 1)
 
 
 # ════════════════════════════════════════════════════════════════
-# typhon-recommend
+# typhon-ask
 # ════════════════════════════════════════════════════════════════
 
-def cmd_recommend():
-    """
-    Get optimization recommendations from the trained Oracle model.
-
-    Predicts TPS and VRAM usage across a range of context sizes for your
-    hardware and flags configurations that risk OOM (out-of-memory) errors.
-    """
+def cmd_ask():
     _print_banner()
 
     parser = argparse.ArgumentParser(
-        prog="typhon-recommend",
-        description="Get optimization recommendations from the Oracle model.",
+        prog="typhon-ask",
+        description="Get LLM-powered optimization recommendations for your last benchmark run.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-notes:
-  Requires a trained Oracle model. Run `typhon-train` first.
-  Requires a hardware profile. Run `typhon-scan` first.
+configuration (environment variables):
+  TYPHON_LLM_URL    LLM endpoint — default: auto-detect from hardware profile
+                    Examples: http://localhost:11434  |  https://api.openai.com/v1
+  TYPHON_LLM_KEY    API key. Use "none" for local servers (default).
+  TYPHON_LLM_MODEL  Model name. "auto" uses the detected model (default).
 
 examples:
-  typhon-recommend
-  typhon-recommend --ctx 49152
-  typhon-recommend --model hermes-3-llama-3.1-8b-q8_0
-  typhon-recommend --ctx 32768 --model llama-3.1-70b-q4_k_m
+  typhon-ask
+  TYPHON_LLM_MODEL=mistral typhon-ask
+  TYPHON_LLM_URL=https://api.openai.com/v1 TYPHON_LLM_KEY=sk-... TYPHON_LLM_MODEL=gpt-4o typhon-ask
         """,
     )
-    parser.add_argument(
-        "--ctx",
-        type=int,
-        metavar="TOKENS",
-        help=(
-            "Add a specific context size (in tokens) to the prediction table. "
-            "This value is included alongside the standard sweep points "
-            "(1K, 2K, 4K, 8K, 16K, 32K, 64K). "
-            "Example: --ctx 49152"
-        ),
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        metavar="NAME",
-        help=(
-            "Model name to use for predictions. Should match the model name "
-            "as it appears in your chronicle data. If omitted, uses the most "
-            "recent model from the chronicle. "
-            "Example: --model hermes-3-llama-3.1-8b-q8_0"
-        ),
-    )
-    args = parser.parse_args()
+    parser.parse_args()
 
-    print("🔮 Consulting the Oracle...\n")
-    from typhon.oracle import recommend
-    recommend(args.ctx, args.model)
-    sys.exit(0)
+    print("🤖 Asking LLM for recommendations...\n")
+    from typhon.advisor import ask_data
+    try:
+        ask_data(stream=True)
+        sys.exit(0)
+    except FileNotFoundError as exc:
+        print(f"❌ {exc}")
+        sys.exit(1)
+    except ImportError as exc:
+        print(f"❌ {exc}")
+        sys.exit(1)
+    except Exception as exc:
+        print(f"❌ LLM request failed: {exc}")
+        sys.exit(1)
 
 
 # ════════════════════════════════════════════════════════════════
 # typhon-export
 # ════════════════════════════════════════════════════════════════
 
-def cmd_api():
-    """
-    Start the Typhon REST API server.
-
-    Exposes all Typhon commands as HTTP endpoints. Benchmark jobs run in the
-    background — poll GET /jobs/{job_id} for progress and results.
-
-    Interactive API docs available at http://HOST:PORT/docs once running.
-    """
-    _print_banner()
-
-    parser = argparse.ArgumentParser(
-        prog="typhon-api",
-        description="Start the Typhon REST API server.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-endpoints:
-  GET  /health                   liveness check
-  POST /scan                     detect hardware (sync)
-  POST /jobs/run?mode=quick|full start benchmark job (async)
-  GET  /jobs/{job_id}            job status + progress + result
-  POST /train                    train Oracle models (sync)
-  GET  /recommend                optimization recommendation (JSON)
-
-examples:
-  typhon-api
-  typhon-api --port 9000
-  typhon-api --host 0.0.0.0 --port 8000
-        """,
-    )
-    parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
-    parser.add_argument("--reload", action="store_true", help="Auto-reload on code changes (dev only)")
-    args = parser.parse_args()
-
-    try:
-        import uvicorn
-    except ImportError:
-        print("❌ uvicorn not found. Run: pip install 'uvicorn[standard]'")
-        sys.exit(1)
-
-    print(f"🌪️  Typhon API → http://{args.host}:{args.port}")
-    print(f"   Docs       → http://{args.host}:{args.port}/docs")
-    print(f"   Stop       → Ctrl+C\n")
-
-    uvicorn.run(
-        "typhon_api.server:app",
-        host=args.host,
-        port=args.port,
-        reload=args.reload,
-    )
-
-
 def cmd_export():
-    """
-    Export anonymized benchmark data for community contribution.
-
-    Reads data/chronicle.jsonl, strips all personal and path information,
-    and writes a sanitized JSON file ready to submit as a Pull Request
-    to the community_data/ folder.
-    """
     _print_banner()
 
     parser = argparse.ArgumentParser(
@@ -420,3 +289,51 @@ examples:
     from typhon.exporter import export
     export()
     sys.exit(0)
+
+
+# ════════════════════════════════════════════════════════════════
+# typhon-api
+# ════════════════════════════════════════════════════════════════
+
+def cmd_api():
+    _print_banner()
+
+    parser = argparse.ArgumentParser(
+        prog="typhon-api",
+        description="Start the Typhon REST API server.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+endpoints:
+  GET  /health                   liveness check
+  POST /scan                     detect hardware (sync)
+  POST /jobs/run?mode=quick|full start benchmark job (async)
+  GET  /jobs/{job_id}            job status + progress + result
+  GET  /ask                      LLM recommendations (JSON)
+
+examples:
+  typhon-api
+  typhon-api --port 9000
+  typhon-api --host 0.0.0.0 --port 8000
+        """,
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
+    parser.add_argument("--reload", action="store_true", help="Auto-reload on code changes (dev only)")
+    args = parser.parse_args()
+
+    try:
+        import uvicorn
+    except ImportError:
+        print("❌ uvicorn not found. Run: pip install 'uvicorn[standard]'")
+        sys.exit(1)
+
+    print(f"🌪️  Typhon API → http://{args.host}:{args.port}")
+    print(f"   Docs       → http://{args.host}:{args.port}/docs")
+    print(f"   Stop       → Ctrl+C\n")
+
+    uvicorn.run(
+        "typhon_api.server:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )

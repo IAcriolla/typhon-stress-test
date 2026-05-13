@@ -64,18 +64,14 @@ nav:
     - typhon-scan: cli/scan.md
     - typhon-run: cli/run.md
     - typhon-dashboard: cli/dashboard.md
-    - typhon-train: cli/train.md
-    - typhon-recommend: cli/recommend.md
+    - typhon-summary: cli/summary.md
+    - typhon-ask: cli/ask.md
     - typhon-export: cli/export.md
     - typhon-api: cli/api-server.md
   - REST API:
     - Overview: api/index.md
     - Endpoint Reference: api/reference.md
     - Job Lifecycle: api/jobs.md
-  - The Oracle:
-    - How It Works: oracle/index.md
-    - Training: oracle/training.md
-    - Reading Recommendations: oracle/recommendations.md
   - Supported Servers: supported-servers.md
   - Contributing: contributing.md
 
