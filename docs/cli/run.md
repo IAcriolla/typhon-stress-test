@@ -36,7 +36,7 @@ The trial adapts to your VRAM. A 24 GB card faces wider pressure than an 8 GB ca
 | Category | What it hunts |
 |---|---|
 | `baseline` | Peak TPS with a short prompt — your hardware ceiling before context pressure arrives |
-| `context_sweep` | TPS and VRAM at each context step — maps the degradation as the window grows |
+| `context_sweep` | TPS and VRAM at each context step — maps the degradation as the window grows. Each test sends a synthetic prompt sized to **fill the entire target context window**, so the numbers reflect real pressure at that size, not a trivial prompt measured in a large window. |
 | `stress` | TPS during a long generation — finds whether throughput collapses over time |
 | `memory_wall` | The VRAM limit — where context exhausts the card and performance breaks (full mode only) |
 
@@ -47,6 +47,10 @@ Every test with ≥ 2 runs discards the first inference. Cold-cache results are 
 ### TTFT measurement
 
 Typhon streams every inference (`stream: true`) to capture the **time to first token** the moment the first chunk arrives — separate from generation throughput. TPS is calculated over the generation phase only, after the prefill is complete.
+
+### Dynamic timeouts
+
+Each context sweep test carries its own timeout, scaled to the input size: `max(120s, tokens ÷ 1000 × 5 + 120s)`. A 64K-token test gets roughly 4 minutes; a 2K test gets the standard 2-minute floor. Results include a `token_count_source` field — `"server_usage"` when the server reported exact counts, `"chunk_estimate"` when Typhon had to count streaming chunks itself.
 
 ### GPU monitoring
 

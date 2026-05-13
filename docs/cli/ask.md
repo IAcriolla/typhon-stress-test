@@ -75,6 +75,7 @@ The scroll sent to the LLM contains:
 - Model name and server type
 - Per-benchmark TPS, VRAM usage, and temperature at each context size
 - Stress test and memory wall results
+- Zeus extreme context results (128K / 256K), if you have run `typhon-zeus` at least once
 
 No personal information, file paths, or hostnames are included.
 

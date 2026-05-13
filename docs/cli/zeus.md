@@ -75,6 +75,12 @@ A 24 GB card (RTX 3090/4090) can hold 256K with an 8B Q8 model. A 16 GB card may
 
 ---
 
+## The oracle knows
+
+After a Zeus run, `typhon-ask` automatically picks up the most recent `zeus_run_*.json`. The oracle sees your TTFT, generation TPS, and VRAM pressure at 128K and 256K alongside your normal benchmark data — and can factor all of it into its recommendations. No extra steps required.
+
+---
+
 ## The record
 
 Results are written to `data/zeus_run_<timestamp>.json`, separate from normal benchmark data:
