@@ -1,5 +1,7 @@
 # Typhon Stress Test 🌪️
 
+![Typhon Banner](assets/banner.jpg)
+
 **Typhon** is an experimental research tool designed to profile the performance limits and VRAM consumption of Large Language Models (LLMs) running on consumer-grade hardware.
 
 The primary goal of Typhon is to identify the "memory wall"—the point where context size expansion leads to VRAM exhaustion—by performing incremental stress tests and using machine learning to model the hardware's behavior.
