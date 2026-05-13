@@ -1,8 +1,20 @@
-# Typhon 🌪️ — Local LLM Stress Test & Optimizer
+<p align="center">
+  <img src="assets/banner.jpg" alt="Typhon Banner" width="600"/>
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<h1 align="center">Typhon 🌪️</h1>
+<p align="center"><strong>Local LLM Stress Test & Optimization Suite</strong></p>
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey" alt="Platform">
+</p>
 
-Typhon es una herramienta de código abierto para **medir, entender y optimizar** setups de LLMs locales. Diseñada para que cualquier persona pueda entender qué hace su hardware y cómo sacarle el máximo provecho.
+---
+
+Typhon is an open-source tool to **measure, understand, and optimize** local LLM setups. It automatically detects your hardware, runs a tailored benchmark suite, generates an interactive educational dashboard, and uses machine learning to recommend the best configuration for your specific hardware.
+
+Designed for anyone running models locally — from beginners to power users.
 
 ---
 
@@ -13,168 +25,265 @@ git clone https://github.com/IAcriolla/typhon-stress-test.git
 cd typhon-stress-test
 pip install -r requirements.txt
 
-# 1. Detectar hardware y software
+# Detect your hardware and any running LLM servers
 python typhon.py scan
 
-# 2. Correr benchmark suite
-python typhon.py run --quick    # ~5 min
-python typhon.py run --full     # ~20 min
+# Run the full benchmark suite
+python typhon.py run
 
-# 3. Ver dashboard interactivo
+# Open the interactive dashboard
 python typhon.py dashboard
+```
 
-# O todo en un comando:
-./full_cycle.sh --quick
+Or run everything in one command:
+
+```bash
+./full_cycle.sh
 ```
 
 ---
 
-## ¿Qué hace Typhon?
+## Commands
 
-### 1. 🔍 Scan — Reconocimiento automático
+### `scan` — Detect hardware and software
+
 ```bash
 python typhon.py scan
 ```
-Detecta automáticamente:
-- GPU(s): nombre, VRAM, temperatura, driver
-- CPU: nombre, cores físicos y lógicos
-- RAM del sistema
-- Servidores LLM corriendo (llama.cpp, Ollama, LM Studio, vLLM, Jan)
-- Modelos disponibles en cada servidor
-- Paquetes Python instalados
 
-### 2. 🌪️ Run — Suite de benchmarks adaptativa
+Automatically detects and saves your full hardware and software profile:
+
+- **GPU**: name, VRAM capacity, driver version, compute capability
+- **CPU**: model name, physical and logical core count
+- **RAM**: total and available system memory
+- **LLM Servers**: probes known ports for running instances of llama.cpp, Ollama, LM Studio, vLLM, Jan, and text-generation-webui. Lists all loaded models found on each server.
+- **Python packages**: checks which recommended packages are installed and flags missing ones
+
+Results are saved to `data/hardware_profile.json` and used by all other commands.
+
+---
+
+### `run` — Benchmark suite
+
 ```bash
-python typhon.py run [--quick | --full]
+python typhon.py run [--quick] [--full]
 ```
-El plan de pruebas se adapta automáticamente a tu hardware:
-- **Baseline**: TPS máximo con prompt corto
-- **Context Sweep**: Mapeo de TPS vs tamaño de contexto
-- **Long Gen Stress**: Detección de caída sostenida en generaciones largas
-- **Memory Wall** (modo full): Búsqueda del límite de VRAM
 
-### 3. 📊 Dashboard — Visualización interactiva
+Runs the complete benchmark pipeline: scan (if no profile exists) → benchmarks → save to chronicle → generate dashboard.
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--quick` | Runs a reduced test plan with fewer context sizes and runs per test. Takes approximately 3–5 minutes. Good for a fast sanity check or when you're iterating on settings. |
+| `--full` | Runs the complete test plan including the memory wall detection test. Takes approximately 15–20 minutes. Recommended for collecting data for the Oracle model. Default if no flag is specified. |
+
+**What it benchmarks:**
+
+The test plan is generated dynamically based on your GPU's VRAM. A 24 GB card tests up to 65,536 token context; an 8 GB card tests up to 16,384 tokens.
+
+| Test category | What it measures |
+|---------------|-----------------|
+| `baseline` | Peak TPS with a short prompt and minimal context. Establishes your hardware's performance ceiling. |
+| `context_sweep` | TPS and latency at increasing context sizes (2K → 4K → 8K → 16K → 32K → 64K). Maps the performance degradation curve. |
+| `stress` | TPS during a long generation (1024 tokens output). Detects sustained throughput drop that doesn't show up in short runs. |
+| `memory_wall` | Runs at maximum context size to find where VRAM is exhausted and performance collapses. Full mode only. |
+
+---
+
+### `dashboard` — Interactive results viewer
+
 ```bash
 python typhon.py dashboard
 ```
-Dashboard HTML auto-contenido con:
-- Perfil de hardware detectado
-- Métricas clave: TPS, VRAM, temperatura, utilización GPU
-- Gráficos interactivos: TPS vs contexto, latencia, histórico
-- Tabla detallada de cada benchmark con explicaciones
-- Conceptos educativos: qué es TPS, flash attention, cuantización, etc.
-- Recomendaciones automáticas según tus resultados
 
-### 4. 🧠 Train — Modelo predictivo
+Regenerates the HTML dashboard from the latest run data and opens it in your default browser. The dashboard includes:
+
+- Full hardware profile summary
+- Key metrics: TPS, VRAM usage, GPU temperature, GPU utilization
+- Interactive charts: TPS vs context size, latency, historical runs
+- Full benchmark detail table with category labels and pass/fail per run
+- Educational glossary: explains context window, flash attention, quantization, KV cache, memory wall, thermal throttling
+- Automatic recommendations based on your results
+
+The dashboard is a single self-contained HTML file (`typhon-dashboard.html`) with no external dependencies at runtime.
+
+---
+
+### `train` — Train the Oracle model
+
 ```bash
 python typhon.py train
 ```
-Entrena un modelo XGBoost sobre tu chronicle acumulado para predecir:
-- TPS esperado para cualquier configuración de contexto
-- Uso de VRAM estimado
-- Riesgo de OOM
 
-### 5. 🔮 Recommend — Optimización
+Trains two XGBoost regression models on your accumulated chronicle data:
+
+- **TPS model**: predicts tokens per second for any combination of hardware + context size + model
+- **VRAM model**: predicts peak VRAM usage in MB
+
+Requires at least 10 records in the chronicle. The more runs you have — especially across different context sizes and models — the more accurate the predictions.
+
+Trained models are saved to `models/oracle_tps.pkl` and `models/oracle_vram.pkl`.
+
+---
+
+### `recommend` — Get optimization recommendations
+
 ```bash
-python typhon.py recommend
-python typhon.py recommend --ctx 32768
-python typhon.py recommend --model hermes-3-llama-3.1-8b
+python typhon.py recommend [--ctx TOKENS] [--model NAME]
 ```
-Basado en tu hardware y datos históricos, recomienda:
-- Tamaño de contexto óptimo para máximo TPS
-- Configuraciones de servidor recomendadas
 
-### 6. 📦 Export — Contribuir a la comunidad
+Uses the trained Oracle models to predict performance across a range of context sizes and recommends the optimal configuration for your hardware.
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--ctx TOKENS` | Include a specific context size in the prediction table (e.g. `--ctx 49152`). This value is added alongside the standard sweep points. |
+| `--model NAME` | Specify a model name to query predictions for (e.g. `--model hermes-3-llama-3.1-8b-q8_0`). If omitted, uses the last model from the chronicle. |
+
+**Example output:**
+
+```
+Hardware: NVIDIA GeForce RTX 3090 — 24.0 GB VRAM
+
+    Context      Est. TPS     Est. VRAM        Status
+    ──────────  ──────────  ────────────  ────────────
+         1,024      91.2 t/s     7,200 MB      ✅ Safe
+         2,048      82.4 t/s     8,100 MB      ✅ Safe
+         4,096      68.1 t/s     9,800 MB      ✅ Safe
+         8,192      51.3 t/s    12,400 MB      ✅ Safe
+        16,384      34.7 t/s    17,200 MB      ✅ Safe
+        32,768      18.9 t/s    21,800 MB    ⚠️  Near limit
+        65,536       7.2 t/s    25,100 MB    ⛔ OOM risk
+
+💡 Recommendation: ctx_size=32,768 gives best TPS (18.9 t/s) within safe VRAM range
+   Start llama-server with: --ctx-size 32768 --flash-attn on
+```
+
+Requires a trained model (`python typhon.py train`) and a hardware profile (`python typhon.py scan`).
+
+---
+
+### `export` — Export anonymized data
+
 ```bash
 python typhon.py export
 ```
-Genera un JSON anonimizado listo para contribuir al dataset comunitario via PR.
+
+Generates an anonymized JSON file from your chronicle, ready to contribute to the community dataset via Pull Request.
+
+**What is included:**
+- GPU name, VRAM, vendor
+- CPU core count (not the full name)
+- Total system RAM
+- Model filename (path stripped)
+- Benchmark metrics: TPS, VRAM usage, temperature, latency, utilization
+- Machine ID: a one-way hash of your hardware fingerprint — no personal information
+
+**What is NOT included:**
+- File paths
+- Username or hostname
+- IP addresses or network information
+- OS version details
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to submit your data.
 
 ---
 
-## Servidores LLM soportados
+## Supported LLM Servers
 
-| Servidor | Puerto default | Detección automática |
-|---|---|---|
-| llama.cpp (llama-server) | 8080 | ✅ |
-| Ollama | 11434 | ✅ |
-| LM Studio | 1234 | ✅ |
-| vLLM | 8000 | ✅ |
-| text-generation-webui | 5000 | ✅ |
-| Jan | 1337 | ✅ |
+Typhon automatically detects servers running on their default ports:
+
+| Server | Default Port | Notes |
+|--------|-------------|-------|
+| llama.cpp (`llama-server`) | 8080 | Recommended. Supports `--flash-attn on`, `--ctx-size`, `-ngl` |
+| Ollama | 11434 | Lists loaded models automatically |
+| LM Studio | 1234 | OpenAI-compatible API |
+| vLLM | 8000 | OpenAI-compatible API |
+| text-generation-webui | 5000 | Requires OpenAI extension enabled |
+| Jan | 1337 | OpenAI-compatible API |
 
 ---
 
-## Ejemplo: RTX 3090 + Hermes 3
+## Starting llama-server (example)
 
+```bash
+./llama-server \
+  --model path/to/model.gguf \
+  --port 8080 \
+  --flash-attn on \
+  --ctx-size 32768 \
+  -ngl 99
 ```
-GPU: NVIDIA GeForce RTX 3090 — 24.0 GB VRAM
-CPU: AMD Ryzen 9 5900X 12-Core Processor
-RAM: 64.0 GB
 
-[1/6] Baseline (short prompt)
-       run 1: 87.3 TPS, 0.7s
-       run 2: 85.1 TPS, 0.8s
-
-[2/6] Context sweep — 2,048 tokens
-       run 1: 78.2 TPS, 3.2s
-
-[3/6] Context sweep — 8,192 tokens
-       run 1: 52.1 TPS, 4.8s
-
-[4/6] Context sweep — 32,768 tokens
-       run 1: 18.3 TPS, 13.9s
-
-✅ TYPHON MISSION COMPLETE
-📊 Dashboard ready: typhon-dashboard.html
-```
+| Flag | Description |
+|------|-------------|
+| `--model` | Path to your `.gguf` model file |
+| `--port` | Port to listen on. Typhon probes 8080 by default |
+| `--flash-attn on` | Enables Flash Attention. Reduces VRAM and improves TPS on large contexts |
+| `--ctx-size` | Maximum context size in tokens. Higher values use more VRAM |
+| `-ngl 99` | Number of layers to offload to GPU. Use 99 to offload everything (recommended) |
 
 ---
 
-## Estructura del proyecto
+## Project Structure
 
 ```
 typhon/
-├── typhon.py                    # CLI principal
-├── full_cycle.sh                # Ciclo completo en un comando
-├── requirements.txt
+├── typhon.py                      # Main CLI entry point
+├── full_cycle.sh                  # One-command scan + run shortcut
+├── requirements.txt               # Python dependencies
 ├── scripts/
-│   ├── scanner.py               # Detección de hardware/software
-│   ├── engine.py                # Motor de benchmarks adaptativo
-│   ├── scribe.py                # Chronicle dataset (JSONL)
-│   ├── oracle.py                # XGBoost: training + recomendaciones
-│   ├── dashboard_generator.py   # Dashboard HTML interactivo
-│   └── exporter.py              # Export anonimizado para comunidad
-├── data/                        # Datos locales (en .gitignore)
-├── models/                      # Modelos entrenados (en .gitignore)
-├── community_data/              # Contribuciones de la comunidad
-└── docs/
+│   ├── scanner.py                 # Hardware and LLM server detection
+│   ├── engine.py                  # Adaptive benchmark engine
+│   ├── scribe.py                  # Appends results to chronicle dataset
+│   ├── oracle.py                  # XGBoost training and recommendations
+│   ├── dashboard_generator.py     # Interactive HTML dashboard generator
+│   └── exporter.py                # Anonymized community data export
+├── data/                          # Local data (gitignored)
+│   ├── hardware_profile.json      # Your hardware profile (created by scan)
+│   ├── last_run.json              # Most recent benchmark results
+│   └── chronicle.jsonl            # Cumulative dataset (one JSON per line)
+├── models/                        # Trained models (gitignored)
+│   ├── oracle_tps.pkl             # XGBoost TPS predictor
+│   └── oracle_vram.pkl            # XGBoost VRAM predictor
+├── community_data/                # Community-contributed benchmark exports
+├── assets/                        # Images and static assets
+└── typhon-dashboard.html          # Generated dashboard (gitignored)
 ```
 
 ---
 
-## Dataset comunitario
+## Requirements
 
-El objetivo a largo plazo es construir un dataset con benchmarks de distintos setups de hardware para entrenar mejores modelos de recomendación.
+- **Python** 3.9+
+- **GPU**: NVIDIA recommended (AMD and Apple Silicon have basic support)
+- **`nvidia-smi`**: required for GPU monitoring metrics during benchmarks
+- **An LLM server**: llama.cpp, Ollama, LM Studio, or any OpenAI-compatible server
 
-¿Querés contribuir tus datos? Leé [CONTRIBUTING.md](CONTRIBUTING.md).
+Install Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
-## Requisitos
+## Community Dataset
 
-- Python 3.9+
-- GPU NVIDIA con VRAM (AMD/Apple Silicon: soporte básico)
-- Un servidor LLM corriendo (llama.cpp, Ollama, LM Studio, etc.)
-- `nvidia-smi` disponible para métricas de GPU
+The long-term goal is to build a dataset of benchmark results from diverse hardware configurations, which will enable better-trained Oracle models and cross-hardware performance comparisons.
+
+Want to contribute your results? Read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
 ## Disclaimer
 
-Herramienta experimental de investigación. No usar en producción.
-Los resultados son estimaciones y pueden variar.
+Typhon is an experimental research tool. It is not intended for production environments. Results and predictions are estimates and should be validated with actual runs.
 
-## Licencia
+---
 
-MIT — ver [LICENSE](LICENSE)
+## License
+
+MIT — see [LICENSE](LICENSE)

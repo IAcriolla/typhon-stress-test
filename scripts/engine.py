@@ -130,7 +130,7 @@ def build_test_plan(profile: dict, mode: str) -> list:
     tests.append({
         "id": "baseline_short",
         "name": "Baseline (short prompt)",
-        "description": "Mide el rendimiento base con un prompt corto. Establece el TPS máximo posible.",
+        "description": "Measures baseline performance with a short prompt. Establishes peak TPS with no context pressure.",
         "category": "baseline",
         "prompt": PROMPTS["short"],
         "ctx_size": 2048,
@@ -143,7 +143,7 @@ def build_test_plan(profile: dict, mode: str) -> list:
         tests.append({
             "id": f"ctx_sweep_{ctx}",
             "name": f"Context sweep — {ctx:,} tokens",
-            "description": f"Evalúa TPS y uso de VRAM a {ctx:,} tokens de contexto.",
+            "description": f"Measures TPS and VRAM usage at {ctx:,} tokens of context.",
             "category": "context_sweep",
             "prompt": PROMPTS["medium"],
             "ctx_size": ctx,
@@ -155,7 +155,7 @@ def build_test_plan(profile: dict, mode: str) -> list:
     tests.append({
         "id": "long_gen",
         "name": "Long generation stress",
-        "description": "Genera una respuesta larga para detectar caída de TPS sostenido.",
+        "description": "Generates a long response to detect sustained TPS degradation over time.",
         "category": "stress",
         "prompt": PROMPTS["long"],
         "ctx_size": 8192,
@@ -168,7 +168,7 @@ def build_test_plan(profile: dict, mode: str) -> list:
         tests.append({
             "id": "memory_wall",
             "name": "Memory wall detection",
-            "description": "Incrementa el contexto hasta encontrar el límite de VRAM.",
+            "description": "Pushes context size to the maximum to find the VRAM ceiling.",
             "category": "memory_wall",
             "prompt": PROMPTS["very_long"],
             "ctx_size": ctx_sizes[-1],
