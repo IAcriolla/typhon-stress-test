@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "typhon-llm"
+version = "2.0.0"
+description = "Local LLM Stress Test & Optimization Suite"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+keywords = ["llm", "benchmark", "stress-test", "local-ai", "xgboost", "gpu"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "requests>=2.31.0",
+    "psutil>=5.9.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "xgboost>=2.0.0",
+    "scikit-learn>=1.3.0",
+]
+
+[project.scripts]
+typhon-scan        = "typhon.cli:cmd_scan"
+typhon-run         = "typhon.cli:cmd_run"
+typhon-dashboard   = "typhon.cli:cmd_dashboard"
+typhon-train       = "typhon.cli:cmd_train"
+typhon-recommend   = "typhon.cli:cmd_recommend"
+typhon-export      = "typhon.cli:cmd_export"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["typhon*"]
+
+[tool.setuptools.package-data]
+typhon = ["*.py"]

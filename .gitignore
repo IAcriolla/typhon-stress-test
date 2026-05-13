@@ -1,15 +1,14 @@
-# Data local (no pushear)
+# Local data (do not commit)
 data/hardware_profile.json
 data/last_run.json
 data/chronicle.jsonl
 
-# Modelos entrenados locales
+# Trained models
 models/*.pkl
 
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.egg-info/
 dist/
 build/
@@ -17,11 +16,12 @@ build/
 venv/
 .venv/
 env/
+*.egg-info/
 
-# Dashboard generado
+# Generated dashboard
 typhon-dashboard.html
 
-# Exports (se pushean a community_data/ si el usuario quiere)
+# Exports (submit to community_data/ via PR if you want to share)
 data/typhon_export_*.json
 
 # OS

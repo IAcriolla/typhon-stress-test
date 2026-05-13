@@ -18,42 +18,45 @@ Designed for anyone running models locally — from beginners to power users.
 
 ---
 
-## Quick Start
+## Installation
 
 ```bash
 git clone https://github.com/IAcriolla/typhon-stress-test.git
 cd typhon-stress-test
-pip install -r requirements.txt
-
-# Detect your hardware and any running LLM servers
-python typhon.py scan
-
-# Run the full benchmark suite
-python typhon.py run
-
-# Open the interactive dashboard
-python typhon.py dashboard
+pip install -e .
 ```
 
-Or run everything in one command:
+That's it. Installing with `pip install -e .` registers all Typhon commands directly in your shell — no need to prefix anything with `python`.
+
+---
+
+## Quick Start
 
 ```bash
-./full_cycle.sh
+# 1. Detect your hardware and any running LLM servers
+typhon-scan
+
+# 2. Run the benchmark suite
+typhon-run
+
+# 3. Open the interactive dashboard
+typhon-dashboard
 ```
 
 ---
 
 ## Commands
 
-### `scan` — Detect hardware and software
+### `typhon-scan`
+
+Detects and saves your full hardware and software profile.
 
 ```bash
-python typhon.py scan
+typhon-scan
 ```
 
-Automatically detects and saves your full hardware and software profile:
-
-- **GPU**: name, VRAM capacity, driver version, compute capability
+Scans for:
+- **GPU(s)**: name, VRAM capacity, driver version, compute capability
 - **CPU**: model name, physical and logical core count
 - **RAM**: total and available system memory
 - **LLM Servers**: probes known ports for running instances of llama.cpp, Ollama, LM Studio, vLLM, Jan, and text-generation-webui. Lists all loaded models found on each server.
@@ -63,84 +66,92 @@ Results are saved to `data/hardware_profile.json` and used by all other commands
 
 ---
 
-### `run` — Benchmark suite
+### `typhon-run`
+
+Runs the complete benchmark pipeline.
 
 ```bash
-python typhon.py run [--quick] [--full]
+typhon-run [--quick] [--full]
 ```
 
-Runs the complete benchmark pipeline: scan (if no profile exists) → benchmarks → save to chronicle → generate dashboard.
+Automatically runs `typhon-scan` first if no hardware profile exists, then: runs benchmarks → saves results to the chronicle → generates the dashboard.
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--quick` | Runs a reduced test plan with fewer context sizes and runs per test. Takes approximately 3–5 minutes. Good for a fast sanity check or when you're iterating on settings. |
-| `--full` | Runs the complete test plan including the memory wall detection test. Takes approximately 15–20 minutes. Recommended for collecting data for the Oracle model. Default if no flag is specified. |
+| `--quick` | Reduced test plan with fewer context sizes and fewer runs per test. Takes approximately 3–5 minutes. Good for quick configuration checks or when iterating on settings. |
+| `--full` | Complete test plan including the memory wall detection test. Takes approximately 15–20 minutes. Recommended when collecting data for the Oracle model. **This is the default.** |
 
-**What it benchmarks:**
+**What gets benchmarked:**
 
-The test plan is generated dynamically based on your GPU's VRAM. A 24 GB card tests up to 65,536 token context; an 8 GB card tests up to 16,384 tokens.
+The test plan adapts dynamically to your GPU's VRAM. A 24 GB card tests up to 65,536 token context; an 8 GB card tests up to 16,384 tokens.
 
-| Test category | What it measures |
-|---------------|-----------------|
+| Category | What it measures |
+|----------|-----------------|
 | `baseline` | Peak TPS with a short prompt and minimal context. Establishes your hardware's performance ceiling. |
 | `context_sweep` | TPS and latency at increasing context sizes (2K → 4K → 8K → 16K → 32K → 64K). Maps the performance degradation curve. |
 | `stress` | TPS during a long generation (1024 tokens output). Detects sustained throughput drop that doesn't show up in short runs. |
-| `memory_wall` | Runs at maximum context size to find where VRAM is exhausted and performance collapses. Full mode only. |
+| `memory_wall` | Runs at maximum context size to find where VRAM is exhausted and performance collapses. **Full mode only.** |
 
 ---
 
-### `dashboard` — Interactive results viewer
+### `typhon-dashboard`
+
+Regenerates the HTML dashboard and opens it in your browser.
 
 ```bash
-python typhon.py dashboard
+typhon-dashboard [--no-open]
 ```
 
-Regenerates the HTML dashboard from the latest run data and opens it in your default browser. The dashboard includes:
+**Flags:**
 
+| Flag | Description |
+|------|-------------|
+| `--no-open` | Generate the dashboard file without opening it in the browser. Useful for headless or remote environments. |
+
+The dashboard is a single self-contained HTML file (`typhon-dashboard.html`) with no runtime dependencies. It includes:
 - Full hardware profile summary
 - Key metrics: TPS, VRAM usage, GPU temperature, GPU utilization
 - Interactive charts: TPS vs context size, latency, historical runs
 - Full benchmark detail table with category labels and pass/fail per run
-- Educational glossary: explains context window, flash attention, quantization, KV cache, memory wall, thermal throttling
+- Educational glossary: context window, flash attention, quantization, KV cache, memory wall, thermal throttling
 - Automatic recommendations based on your results
-
-The dashboard is a single self-contained HTML file (`typhon-dashboard.html`) with no external dependencies at runtime.
 
 ---
 
-### `train` — Train the Oracle model
+### `typhon-train`
+
+Trains the XGBoost Oracle model on your accumulated benchmark data.
 
 ```bash
-python typhon.py train
+typhon-train
 ```
 
-Trains two XGBoost regression models on your accumulated chronicle data:
-
+Trains two regression models:
 - **TPS model**: predicts tokens per second for any combination of hardware + context size + model
 - **VRAM model**: predicts peak VRAM usage in MB
 
-Requires at least 10 records in the chronicle. The more runs you have — especially across different context sizes and models — the more accurate the predictions.
+Requires at least 10 records in `data/chronicle.jsonl`. The more diverse the runs — different context sizes, different models, different settings — the more accurate the predictions.
 
-Trained models are saved to `models/oracle_tps.pkl` and `models/oracle_vram.pkl`.
+Saved to `models/oracle_tps.pkl` and `models/oracle_vram.pkl`.
 
 ---
 
-### `recommend` — Get optimization recommendations
+### `typhon-recommend`
+
+Uses the trained Oracle to predict performance across context sizes and recommend the optimal configuration.
 
 ```bash
-python typhon.py recommend [--ctx TOKENS] [--model NAME]
+typhon-recommend [--ctx TOKENS] [--model NAME]
 ```
-
-Uses the trained Oracle models to predict performance across a range of context sizes and recommends the optimal configuration for your hardware.
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--ctx TOKENS` | Include a specific context size in the prediction table (e.g. `--ctx 49152`). This value is added alongside the standard sweep points. |
-| `--model NAME` | Specify a model name to query predictions for (e.g. `--model hermes-3-llama-3.1-8b-q8_0`). If omitted, uses the last model from the chronicle. |
+| `--ctx TOKENS` | Add a specific context size (in tokens) to the prediction table alongside the standard sweep points. Example: `--ctx 49152` |
+| `--model NAME` | Model name to query predictions for. Should match how the model appears in your chronicle. If omitted, uses the most recent model. Example: `--model hermes-3-llama-3.1-8b-q8_0` |
 
 **Example output:**
 
@@ -161,33 +172,36 @@ Hardware: NVIDIA GeForce RTX 3090 — 24.0 GB VRAM
    Start llama-server with: --ctx-size 32768 --flash-attn on
 ```
 
-Requires a trained model (`python typhon.py train`) and a hardware profile (`python typhon.py scan`).
+Requires a trained model (`typhon-train`) and a hardware profile (`typhon-scan`).
 
 ---
 
-### `export` — Export anonymized data
+### `typhon-export`
+
+Exports anonymized benchmark data for community contribution.
 
 ```bash
-python typhon.py export
+typhon-export
 ```
 
-Generates an anonymized JSON file from your chronicle, ready to contribute to the community dataset via Pull Request.
+Reads `data/chronicle.jsonl`, strips all personal and path information, and writes a sanitized JSON file to `data/` ready to submit as a Pull Request to the `community_data/` folder.
 
 **What is included:**
-- GPU name, VRAM, vendor
-- CPU core count (not the full name)
-- Total system RAM
-- Model filename (path stripped)
-- Benchmark metrics: TPS, VRAM usage, temperature, latency, utilization
-- Machine ID: a one-way hash of your hardware fingerprint — no personal information
 
-**What is NOT included:**
-- File paths
-- Username or hostname
-- IP addresses or network information
-- OS version details
+| Field | Included |
+|-------|----------|
+| GPU name, VRAM, vendor | ✅ |
+| CPU core count | ✅ |
+| Total system RAM | ✅ |
+| Model filename (path stripped) | ✅ |
+| Benchmark metrics (TPS, VRAM, temperature, latency) | ✅ |
+| Machine ID (one-way hardware hash) | ✅ |
+| File paths | ❌ |
+| Username / hostname | ❌ |
+| IP addresses | ❌ |
+| OS version details | ❌ |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to submit your data.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit your data.
 
 ---
 
@@ -221,7 +235,7 @@ Typhon automatically detects servers running on their default ports:
 |------|-------------|
 | `--model` | Path to your `.gguf` model file |
 | `--port` | Port to listen on. Typhon probes 8080 by default |
-| `--flash-attn on` | Enables Flash Attention. Reduces VRAM and improves TPS on large contexts |
+| `--flash-attn on` | Enables Flash Attention — reduces VRAM and improves TPS on large contexts |
 | `--ctx-size` | Maximum context size in tokens. Higher values use more VRAM |
 | `-ngl 99` | Number of layers to offload to GPU. Use 99 to offload everything (recommended) |
 
@@ -230,27 +244,28 @@ Typhon automatically detects servers running on their default ports:
 ## Project Structure
 
 ```
-typhon/
-├── typhon.py                      # Main CLI entry point
-├── full_cycle.sh                  # One-command scan + run shortcut
-├── requirements.txt               # Python dependencies
-├── scripts/
-│   ├── scanner.py                 # Hardware and LLM server detection
-│   ├── engine.py                  # Adaptive benchmark engine
-│   ├── scribe.py                  # Appends results to chronicle dataset
-│   ├── oracle.py                  # XGBoost training and recommendations
-│   ├── dashboard_generator.py     # Interactive HTML dashboard generator
-│   └── exporter.py                # Anonymized community data export
-├── data/                          # Local data (gitignored)
-│   ├── hardware_profile.json      # Your hardware profile (created by scan)
-│   ├── last_run.json              # Most recent benchmark results
-│   └── chronicle.jsonl            # Cumulative dataset (one JSON per line)
-├── models/                        # Trained models (gitignored)
-│   ├── oracle_tps.pkl             # XGBoost TPS predictor
-│   └── oracle_vram.pkl            # XGBoost VRAM predictor
-├── community_data/                # Community-contributed benchmark exports
-├── assets/                        # Images and static assets
-└── typhon-dashboard.html          # Generated dashboard (gitignored)
+typhon-stress-test/
+├── pyproject.toml               # Package definition and CLI entry points
+├── requirements.txt             # Python dependencies
+├── typhon/                      # Main Python package
+│   ├── __init__.py
+│   ├── cli.py                   # Entry point functions for all commands
+│   ├── scanner.py               # Hardware and LLM server detection
+│   ├── engine.py                # Adaptive benchmark engine
+│   ├── scribe.py                # Chronicle dataset management
+│   ├── oracle.py                # XGBoost training and recommendations
+│   ├── dashboard_generator.py   # Interactive HTML dashboard generator
+│   └── exporter.py              # Anonymized community data export
+├── data/                        # Local data (gitignored)
+│   ├── hardware_profile.json    # Your hardware profile (created by typhon-scan)
+│   ├── last_run.json            # Most recent benchmark results
+│   └── chronicle.jsonl          # Cumulative dataset — one JSON object per line
+├── models/                      # Trained models (gitignored)
+│   ├── oracle_tps.pkl           # XGBoost TPS predictor
+│   └── oracle_vram.pkl          # XGBoost VRAM predictor
+├── community_data/              # Community-contributed benchmark exports
+├── assets/                      # Images and static assets
+└── typhon-dashboard.html        # Generated dashboard (gitignored)
 ```
 
 ---
@@ -258,21 +273,14 @@ typhon/
 ## Requirements
 
 - **Python** 3.9+
-- **GPU**: NVIDIA recommended (AMD and Apple Silicon have basic support)
-- **`nvidia-smi`**: required for GPU monitoring metrics during benchmarks
+- **GPU**: NVIDIA recommended (`nvidia-smi` required for GPU monitoring). AMD and Apple Silicon have basic support.
 - **An LLM server**: llama.cpp, Ollama, LM Studio, or any OpenAI-compatible server
-
-Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
 
 ---
 
 ## Community Dataset
 
-The long-term goal is to build a dataset of benchmark results from diverse hardware configurations, which will enable better-trained Oracle models and cross-hardware performance comparisons.
+The long-term goal is to build a dataset of benchmark results from diverse hardware configurations to train better Oracle models and enable cross-hardware comparisons.
 
 Want to contribute your results? Read [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -280,7 +288,7 @@ Want to contribute your results? Read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Disclaimer
 
-Typhon is an experimental research tool. It is not intended for production environments. Results and predictions are estimates and should be validated with actual runs.
+Typhon is an experimental research tool, not intended for production use. Results and predictions are estimates and should be validated with actual runs.
 
 ---
 
