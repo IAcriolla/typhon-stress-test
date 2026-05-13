@@ -41,7 +41,7 @@ The primary goal of Typhon is to identify the "memory wall"—the point where co
 
 1. **Start your LLM Server** (example using `llama.cpp`):
    ```bash
-   ./llama-server --model path/to/your/model.gguf --port 8080 --flash-attn
+   ./llama-server --model path/to/your/model.gguf --port 8080 --flash-attn on --ctx-size 131072
    ```
 
 2. **Run an Automated Benchmark Cycle:**
