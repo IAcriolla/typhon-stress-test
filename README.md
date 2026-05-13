@@ -1,16 +1,15 @@
 # Typhon Stress Test 🌩️
 
-**Typhon** is an industrial-grade, predictive benchmarking framework designed to map the performance limits and VRAM "memory walls" of Large Language Models (LLMs) running on local hardware.
+**Typhon** is an experimental research tool designed to profile the performance limits and VRAM consumption of Large Language Models (LLMs) running on consumer-grade hardware.
 
-Unlike standard benchmarks that only report throughput, Typhon uses machine learning (XGBoost) to build a predictive model of your hardware's behavior, allowing you to estimate performance and VRAM consumption for any context size before you actually run the test.
+The primary goal of Typhon is to identify the "memory wall"—the point where context size expansion leads to VRAM exhaustion—by performing incremental stress tests and using machine learning to model the hardware's behavior.
 
-## ✨ Features
+## 🔍 Core Capabilities
 
-- 🚀 **Stress Testing Engine:** Automatically grows context size to find the physical limits of your VRAM.
-- 🧠 **Predictive Oracle:** Uses XGBoost to model the non-linear relationship between context size, VRAM, and TPS.
-- 📜 **The Chronicle:** A persistent, JSON-based historical database of all your benchmark runs.
-- 📊 **Interactive Dashboard:** Generates beautiful, web-based visualizations (Chart.js) of your hardware intelligence.
-- 🛠️ **Modular Design:** Easily extensible components: Engine, Scribe, Oracle, and Dashboard.
+- **Incremental Stress Testing:** Automatically increases context size to observe the impact on throughput (TPS) and VRAM usage.
+- **Performance Profiling:** Monitors VRAM and latency to detect the non-linear performance drops associated with context growth.
+- **Predictive Modeling:** Uses a lightweight XGBoost regressor to estimate performance and VRAM requirements for different context sizes based on historical data.
+- **Data Visualization:** Generates a simple, web-based dashboard to visualize the relationship between context size, throughput, and memory.
 
 ## 🛠️ Installation
 
@@ -18,7 +17,7 @@ Unlike standard benchmarks that only report throughput, Typhon uses machine lear
 
 - Python 3.9+
 - A local LLM server (e.g., `llama.cpp` with `llama-server`)
-- NVIDIA GPU (highly recommended for testing VRAM limits)
+- NVIDIA GPU (required for VRAM profiling)
 
 ### Setup
 
@@ -38,41 +37,39 @@ Unlike standard benchmarks that only report throughput, Typhon uses machine lear
    chmod +x *.sh
    ```
 
-## 🚀 Quick Start
+## 🚀 Usage
 
-1. **Start your LLM Server** (example using llama.cpp):
+1. **Start your LLM Server** (example using `llama.cpp`):
    ```bash
    ./llama-server --model path/to/your/model.gguf --port 8080 --flash-attn
    ```
 
-2. **Run a Full Benchmark Cycle:**
-   This will execute tests at increasing context sizes, sync the results to the Chronicle, train the Oracle, and generate a dashboard.
+2. **Run an Automated Benchmark Cycle:**
+   This runs a sequence of tests, saves the data to a local JSON store, trains the predictive model, and generates a dashboard.
    ```bash
    ./full_cycle.sh
    ```
 
-3. **Consult the Oracle:**
-   Predict performance for a specific context size:
+3. **Predict Performance:**
+   Estimate the impact of a specific context size:
    ```bash
    python3 typhon.py recommend --model "your-model-name" --ctx 65536
    ```
 
 ## 🏗️ Architecture
 
-- **Engine (`scripts/engine.py`):** The core runner that interacts with your LLM server.
-- **Scribe (`scripts/scribe.py`):** Manages the `chronicle.json` data store.
-- **Oracle (`scripts/oracle.py`):** The ML brains that train on historical data.
-- **Dashboard (`scripts/dashboard-generator.py`):** Turns raw data into visual intelligence.
+- **Engine (`scripts/engine.py`):** Handles the execution of inference requests.
+- **Scribe (`scripts/scribe.py`):** Manages the `chronicle.json` historical dataset.
+- **Oracle (`scripts/oracle.py`):** Implements the XGBoost-based predictive logic.
+- **Dashboard (`scripts/dashboard-generator.py`):** Generates HTML/Chart.js visualizations.
+
+## ⚠️ Disclaimer
+
+This is an **experimental research tool**. It is not intended for production environments. Results and predictions should be treated as estimates and verified with actual runs.
 
 ## 🤝 Contributing
 
-Contributions are what make the open-source community such amazing! If you have an idea for a new feature (e.g., support for different quantization types, more complex ML models, or new dashboard layouts), please fork the repo and create a pull request.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! If you have ideas for improving the profiling accuracy, adding new metrics, or enhancing the visualization, please feel free to fork the repository and submit a pull request.
 
 ## 📄 License
 
