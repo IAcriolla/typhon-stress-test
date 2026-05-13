@@ -1,0 +1,19 @@
+# Typhon Gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+
+# Typhon Specifics
+logs/
+models/
+chronicle.json
+
+# OS/System
+.DS_Store
+Thumbs.db
