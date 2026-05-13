@@ -1,6 +1,6 @@
-# Typhon Stress Test 🌪️
-
 ![Typhon Banner](assets/banner.jpg)
+
+# Typhon Stress Test 🌪️
 
 **Typhon** is an experimental research tool designed to profile the performance limits and VRAM consumption of Large Language Models (LLMs) running on consumer-grade hardware.
 
