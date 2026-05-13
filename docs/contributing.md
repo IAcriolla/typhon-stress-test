@@ -2,7 +2,7 @@
 
 ## Benchmark data (most impactful)
 
-The Oracle model learns from hardware diversity. Every GPU and model combination you contribute makes recommendations more accurate for everyone — including people with hardware similar to yours.
+Every GPU and model combination you contribute makes the shared dataset more useful for everyone.
 
 **Step 1 — Run a full benchmark:**
 
@@ -42,7 +42,8 @@ PRs that add benchmark data are accepted without review overhead — just a form
 | `typhon/scanner.py` | Hardware and LLM server detection |
 | `typhon/engine.py` | Benchmark test plan and inference runner |
 | `typhon/scribe.py` | Chronicle dataset flattening and persistence |
-| `typhon/oracle.py` | XGBoost training and prediction |
+| `typhon/advisor.py` | LLM-powered recommendations |
+| `typhon/summarizer.py` | Markdown report generation |
 | `typhon/dashboard_generator.py` | HTML dashboard generation |
 | `typhon/exporter.py` | Anonymized community export |
 | `typhon/cli.py` | Entry points for all `typhon-*` commands |
@@ -57,15 +58,13 @@ tests.append({
     "id": "my_test",
     "name": "My test name",
     "description": "What this test measures.",
-    "category": "my_category",  # also add to chronicle schema
+    "category": "my_category",
     "prompt": PROMPTS["medium"],
     "ctx_size": 8192,
     "max_tokens": 256,
     "n_runs": 3,
 })
 ```
-
-If you add a new category, update `CATEGORICAL_COLS` in `typhon/oracle.py` if it should be a feature for the Oracle.
 
 ### Adding a new LLM server
 
@@ -79,10 +78,7 @@ The port probe and model list fetch are handled automatically.
 
 ### Chronicle schema changes
 
-If you change what gets written to `chronicle.jsonl`, update both:
-
-1. `typhon/scribe.py` → `flatten_run()` — what gets written
-2. `typhon/oracle.py` → `NUMERIC_FEATURES` or `CATEGORICAL_COLS` — what the Oracle uses
+If you change what gets written to `chronicle.jsonl`, update `typhon/scribe.py` → `flatten_run()`.
 
 ---
 
@@ -90,11 +86,11 @@ If you change what gets written to `chronicle.jsonl`, update both:
 
 If you're looking for something to work on:
 
-- **Full AMD ROCm support** — `rocm-smi` parsing in `scanner.py` is basic; GPU monitoring (`nvidia-smi` equivalent) doesn't exist yet for AMD
+- **Full AMD ROCm support** — `rocm-smi` parsing in `scanner.py` is basic; GPU monitoring doesn't exist yet for AMD
 - **Apple Silicon GPU monitor** — `system_profiler` gives hardware info but no per-second VRAM/power readings
 - **Batch inference benchmarks** — current tests are single-request; batch throughput is a different beast
 - **Backend comparison mode** — run the same prompt against llama.cpp, Ollama, and vLLM in one session and compare
-- **Model comparison in the dashboard** — the dashboard currently shows one model's results; overlaying multiple models on the same chart would be useful
+- **Model comparison in the dashboard** — overlaying multiple models on the same chart would be useful
 
 ---
 

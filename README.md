@@ -15,7 +15,7 @@
 
 <br/>
 
-Typhon detects your hardware, runs a tailored benchmark suite, generates an interactive dashboard, and trains a machine learning model to recommend the optimal configuration for your specific setup.
+Typhon detects your hardware, runs a tailored benchmark suite, generates an interactive dashboard, and uses an LLM to recommend the optimal configuration for your specific setup.
 
 Built for anyone running LLMs locally — from first-time tinkerers to hardware enthusiasts.
 
@@ -83,44 +83,34 @@ typhon-dashboard [--no-open]
 
 `--no-open` writes the file without launching the browser. Useful for remote or headless environments.
 
-### `typhon-train`
+### `typhon-summary`
 
-Trains two XGBoost regressors on your accumulated benchmark data. Requires ≥ 10 records in `data/chronicle.jsonl`. Uses K-fold cross-validation for honest error estimates, then retrains on the full dataset.
+Writes a Markdown report of the last benchmark run to `data/typhon-summary-<timestamp>.md`. Includes hardware profile, per-context TPS/VRAM/temperature table, key findings, and a suggested llama-server configuration.
 
-| Model | Predicts |
-|-------|---------|
-| `oracle_tps.pkl` | Tokens per second for any hardware + context + model combination |
-| `oracle_vram.pkl` | Peak VRAM usage in MB |
-
-### `typhon-recommend`
-
-Uses the trained models to predict performance across context sizes and recommend the optimal configuration.
-
-```
-typhon-recommend [--ctx TOKENS] [--model NAME]
+```bash
+typhon-summary
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--ctx TOKENS` | Add a specific context size to the prediction table. Example: `--ctx 49152` |
-| `--model NAME` | Model to query. Defaults to the most recent in the chronicle. |
+### `typhon-ask`
 
-```
-Hardware: NVIDIA GeForce RTX 3090 — 24.0 GB VRAM
-Model:    hermes-3-llama-3.1-8b-q8_0
+Sends your hardware profile and benchmark results to any LLM and streams back personalized recommendations — optimal `--ctx-size`, suggested launch flags, and an explanation of what the data shows.
 
-    Context    Est. TPS    Est. VRAM         Status
-    ─────────  ──────────  ────────────  ──────────────
-        2,048    82.4 t/s      8,100 MB        ✅ Safe
-        8,192    51.3 t/s     12,400 MB        ✅ Safe
-       32,768    18.9 t/s     21,800 MB   ⚠️  Near limit
-       65,536     7.2 t/s     25,100 MB      ⛔ OOM risk
-
-💡  ctx_size=32,768 — best TPS within safe VRAM range (18.9 t/s)
-    Start llama-server with: --ctx-size 32768 --flash-attn on
+```bash
+typhon-ask
 ```
 
-The recommendation picks the largest context whose predicted VRAM stays below the OOM threshold, maximizing the usable context window while avoiding crashes.
+Works with any OpenAI-compatible endpoint. By default uses the same local server that was just benchmarked — zero configuration required.
+
+```bash
+# Local server (default — no config needed)
+typhon-ask
+
+# Ollama
+TYPHON_LLM_URL=http://localhost:11434 TYPHON_LLM_MODEL=llama3 typhon-ask
+
+# OpenAI
+TYPHON_LLM_URL=https://api.openai.com/v1 TYPHON_LLM_KEY=sk-... TYPHON_LLM_MODEL=gpt-4o typhon-ask
+```
 
 ### `typhon-export`
 
@@ -147,15 +137,21 @@ typhon-api [--host HOST] [--port PORT]
 # Start the server
 typhon-api
 
+# Get a structured summary of current state (instant if data exists)
+curl -s "http://localhost:8000/report" | jq '{model, baseline_tps, suggested_ctx_size}'
+
 # Fire a benchmark job (returns immediately)
 curl -s -X POST "http://localhost:8000/jobs/run?mode=quick"
 # {"job_id": "a3f1c820", "status": "pending", "mode": "quick"}
 
 # Poll for progress and results
 curl -s "http://localhost:8000/jobs/a3f1c820" | jq '{status, progress}'
+
+# Get LLM recommendations
+curl -s "http://localhost:8000/ask"
 ```
 
-Interactive API docs at `http://localhost:8000/docs`. See the [REST API documentation](https://iacriolla.github.io/typhon-stress-test/api/) for the full reference.
+Interactive API docs at `http://localhost:8000/docs`. See [AGENTS.md](AGENTS.md) for the agent integration guide.
 
 ## Supported servers
 
@@ -196,22 +192,40 @@ typhon-stress-test/
 │   ├── scanner.py              # Hardware and LLM server detection
 │   ├── engine.py               # Adaptive benchmark engine
 │   ├── scribe.py               # Chronicle dataset management
-│   ├── oracle.py               # XGBoost training and prediction
+│   ├── advisor.py              # LLM-powered recommendations
+│   ├── summarizer.py           # Markdown report generation
 │   ├── dashboard_generator.py  # Self-contained HTML dashboard
 │   └── exporter.py             # Anonymized community export
 ├── typhon_api/
 │   └── server.py               # FastAPI REST server
 ├── docs/                       # MkDocs documentation source
 ├── data/                       # Runtime data — gitignored
-├── models/                     # Trained models — gitignored
 ├── community_data/             # Community benchmark contributions
 ├── assets/
+├── AGENTS.md                   # Agent integration guide
 └── pyproject.toml
+```
+
+## Agent integration
+
+See [AGENTS.md](AGENTS.md) for the complete guide. The short version:
+
+```bash
+typhon-api   # start the server
+
+# Check if data exists — instant if it does
+GET /report
+
+# If not, run a benchmark
+POST /jobs/run?mode=quick   →  poll GET /jobs/{job_id}
+
+# Get recommendations
+GET /ask
 ```
 
 ## Contributing
 
-Benchmark data from diverse hardware makes the Oracle model more accurate for everyone. Run `typhon-export` and open a PR to `community_data/`. Code contributions welcome — open an issue first for anything substantial. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Run `typhon-export` and open a PR to `community_data/`. Code contributions welcome — open an issue first for anything substantial. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

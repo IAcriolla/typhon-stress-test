@@ -56,8 +56,8 @@ Once the server is running, open `http://127.0.0.1:8000/docs` in your browser fo
 | `POST` | `/jobs/run` | Start benchmark job (async) |
 | `GET` | `/jobs/{job_id}` | Job status + result |
 | `GET` | `/jobs` | List all jobs |
-| `POST` | `/train` | Train Oracle models (sync) |
-| `GET` | `/recommend` | Structured recommendation |
+| `GET` | `/report` | Structured current-state summary (no LLM) |
+| `GET` | `/ask` | LLM-powered recommendations |
 
 See the full [REST API Reference](../api/reference.md) and [Job Lifecycle](../api/jobs.md) for details.
 

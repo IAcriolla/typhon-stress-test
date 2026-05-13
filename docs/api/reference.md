@@ -43,12 +43,12 @@ Synchronous — completes in ~2–5 seconds.
       "vendor": "NVIDIA"
     }
   ],
-  "llm_servers": [
+  "servers": [
     {
       "name": "llama.cpp (llama-server)",
       "port": 8080,
-      "api_base": "http://localhost:8080",
-      "status": "running",
+      "url": "http://localhost:8080",
+      "status": "online",
       "models": ["hermes-3-llama-3.1-8b-q8_0"]
     }
   ]
@@ -142,39 +142,9 @@ List all jobs for the current server session. The `result` payload is omitted to
 
 ---
 
-## `POST /train`
+## `GET /report`
 
-Train the XGBoost Oracle models on chronicle data. Synchronous — typically takes 2–30 seconds depending on dataset size.
-
-**Response `200`**
-
-```json
-{
-  "avg_tps": { "mae": 1.87, "r2": 0.974 },
-  "avg_vram_used_mb": { "mae": 142.3, "r2": 0.991 }
-}
-```
-
-**Response `422`** — not enough data
-
-```json
-{
-  "detail": "Not enough data to train. Need ≥10 records in chronicle."
-}
-```
-
----
-
-## `GET /recommend`
-
-Return the Oracle recommendation as structured JSON.
-
-**Query parameters**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `ctx` | integer | Extra context size to include in the prediction table, e.g. `49152` |
-| `model` | string | Model name as recorded in chronicle. Defaults to most recent. |
+Return a clean, structured summary of the current hardware profile and latest benchmark results. Designed for agent consumption — no LLM call, instant response if data exists.
 
 **Response `200`**
 
@@ -182,34 +152,64 @@ Return the Oracle recommendation as structured JSON.
 {
   "hardware": {
     "gpu_name": "NVIDIA GeForce RTX 3090",
-    "vram_gb": 24.0
+    "gpu_vram_gb": 24.0,
+    "cpu_name": "Intel Core i9-13900K",
+    "cpu_cores_physical": 24,
+    "ram_total_gb": 64.0
   },
+  "server": { "name": "llama.cpp", "url": "http://localhost:8080" },
   "model": "hermes-3-llama-3.1-8b-q8_0",
-  "predictions": [
-    { "ctx_size": 2048,  "est_tps": 82.4, "est_vram_mb": 8100,  "vram_pct": 32.9, "status": "safe",       "safe": true  },
-    { "ctx_size": 8192,  "est_tps": 51.3, "est_vram_mb": 12400, "vram_pct": 50.5, "status": "safe",       "safe": true  },
-    { "ctx_size": 32768, "est_tps": 18.9, "est_vram_mb": 21800, "vram_pct": 88.7, "status": "near_limit", "safe": true  },
-    { "ctx_size": 65536, "est_tps": 7.2,  "est_vram_mb": 25100, "vram_pct": 102.1,"status": "oom_risk",   "safe": false }
+  "run_at": "2025-06-01T14:22:00",
+  "mode": "quick",
+  "baseline_tps": 82.4,
+  "peak_vram_mb": 21800,
+  "peak_vram_pct": 88.7,
+  "peak_temp_c": 79,
+  "avg_util_pct": 95,
+  "context_sweep": [
+    { "ctx_size": 2048,  "avg_tps": 78.2, "vram_mb": 8450,  "temp_c": 65, "elapsed_s": 3.21 },
+    { "ctx_size": 8192,  "avg_tps": 58.3, "vram_mb": 11100, "temp_c": 70, "elapsed_s": 8.65 },
+    { "ctx_size": 32768, "avg_tps": 18.9, "vram_mb": 21800, "temp_c": 79, "elapsed_s": 54.2 }
   ],
-  "recommendation": {
-    "ctx_size": 32768,
-    "est_tps": 18.9,
-    "llama_server_flags": "--ctx-size 32768 --flash-attn on"
-  }
+  "findings": [
+    "VRAM healthy: 88.7% at maximum tested context",
+    "Excellent throughput: 82.4 t/s at baseline"
+  ],
+  "suggested_ctx_size": 32768,
+  "suggested_command": "./llama-server --model /path/to/model.gguf --ctx-size 32768 --flash-attn on -ngl 99"
 }
 ```
 
-`recommendation` is `null` if no safe context size was found above 5 TPS.
+`suggested_ctx_size` is the largest context whose average VRAM stayed below 85% of total VRAM. `null` if no context sweep data exists.
 
-**Status values**
+**Response `404`** — no hardware profile or no benchmark data yet.
 
-| Status | Meaning |
-|---|---|
-| `safe` | VRAM ≤ 85% of total |
-| `near_limit` | VRAM 85–95% of total |
-| `oom_risk` | VRAM > 95% of total |
-| `unknown` | No VRAM model available |
+---
 
-**Response `404`** — no trained model or hardware profile found.
+## `GET /ask`
 
-**Response `503`** — missing ML dependencies.
+Send benchmark results to the configured LLM and return its recommendations as JSON.
+
+Configure the LLM via environment variables on the server process:
+
+| Variable | Default | Description |
+|---|---|---|
+| `TYPHON_LLM_URL` | auto-detect | Base URL of the LLM |
+| `TYPHON_LLM_KEY` | `none` | API key |
+| `TYPHON_LLM_MODEL` | `auto` | Model name |
+
+**Response `200`**
+
+```json
+{
+  "response": "Based on your RTX 3090 results...\n\n```bash\n./llama-server ...\n```",
+  "model": "hermes-3-llama-3.1-8b-q8_0",
+  "endpoint": "http://localhost:8080"
+}
+```
+
+**Response `404`** — no hardware profile or no benchmark data.
+
+**Response `503`** — `openai` package not installed.
+
+**Response `502`** — LLM request failed (server unreachable, model error).

@@ -56,10 +56,7 @@ All dependencies are declared in `pyproject.toml` and installed automatically by
 |---|---|
 | `requests` | HTTP client for LLM server communication and scanner |
 | `psutil` | CPU and RAM detection |
-| `numpy` | Numerical operations for the Oracle |
-| `pandas` | Chronicle dataset management |
-| `xgboost` | Oracle regression models |
-| `scikit-learn` | Feature encoding and cross-validation |
+| `openai` | OpenAI-compatible client for `typhon-ask` (works with any local LLM too) |
 | `fastapi` | REST API server |
 | `uvicorn` | ASGI server for the REST API |
 
@@ -85,4 +82,4 @@ git pull
 pip install -e .   # re-registers entry points if they changed
 ```
 
-Your `data/` and `models/` directories are gitignored and will not be touched by a pull.
+Your `data/` directory is gitignored and will not be touched by a pull.

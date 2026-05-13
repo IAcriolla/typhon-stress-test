@@ -1,6 +1,6 @@
 # Quick Start
 
-This guide walks you through a complete first run from install to dashboard in under 25 minutes.
+This guide walks you through a complete first run from install to recommendations in under 25 minutes.
 
 ---
 
@@ -114,66 +114,74 @@ PHASE 3/3 — Generating interactive dashboard
 ─────────────────────────────────────────
 
 ✅ TYPHON MISSION COMPLETE
-📊 Dashboard: /path/to/typhon-stress-test/typhon-dashboard.html
+📊 Dashboard : /path/to/typhon-stress-test/typhon-dashboard.html
+📝 Summary   : typhon-summary
+🤖 Ask LLM   : typhon-ask
 ```
 
 The dashboard opens in your browser automatically.
 
 ---
 
-## 5. Train the Oracle (after a few runs)
-
-Once you have at least 10 chronicle records (≈ 2 full runs), train the prediction model:
+## 5. Get a Markdown summary
 
 ```bash
-typhon-train
+typhon-summary
 ```
 
-```
-  📊 Dataset: 14 records from 1 unique machines
-  🎯 Models: ['hermes-3-llama-3.1-8b-q8_0']
-
-  ✅ avg_tps model trained (3-fold CV on 14 samples)
-     MAE: 2.41 | R²: 0.961
-
-  ✅ avg_vram_used_mb model trained (3-fold CV on 12 samples)
-     MAE: 187.3 | R²: 0.988
-
-  💾 Models saved to models/
-```
+Writes `data/typhon-summary-<timestamp>.md` with a hardware table, per-context TPS/VRAM/temperature breakdown, key findings, and a suggested llama-server configuration based on your actual measured data.
 
 ---
 
-## 6. Get a recommendation
+## 6. Ask an LLM for recommendations
 
 ```bash
-typhon-recommend
+typhon-ask
 ```
 
-The Oracle predicts TPS and VRAM for each context size and recommends the largest safe configuration:
+Typhon sends your benchmark results to the same local LLM server you just measured — no API key or extra configuration needed. The response streams directly to your terminal:
 
 ```
-  Hardware: NVIDIA GeForce RTX 3090 — 24.0 GB VRAM
-  Model:    hermes-3-llama-3.1-8b-q8_0
+  Endpoint : http://localhost:8080
+  Model    : hermes-3-llama-3.1-8b-q8_0
 
-      Context    Est. TPS    Est. VRAM         Status
-      ─────────  ──────────  ────────────  ──────────────
-          1,024    91.2 t/s      7,400 MB        ✅ Safe
-          2,048    82.4 t/s      8,100 MB        ✅ Safe
-          4,096    72.1 t/s      9,200 MB        ✅ Safe
-          8,192    51.3 t/s     12,400 MB        ✅ Safe
-         16,384    31.8 t/s     16,900 MB        ✅ Safe
-         32,768    18.9 t/s     21,800 MB   ⚠️  Near limit
-         65,536     7.2 t/s     25,100 MB      ⛔ OOM risk
+Based on your RTX 3090 results, here's my analysis:
 
-  💡  ctx_size=32,768 — best TPS within safe VRAM range (18.9 t/s)
-      Start llama-server with: --ctx-size 32768 --flash-attn on
+Your baseline of 82.4 t/s is excellent — the GPU is well-utilized.
+The context sweep shows a clean degradation curve with no signs of
+memory swapping until past 32K tokens...
+
+**Recommended configuration:**
+
+\`\`\`bash
+./llama-server \
+  --model hermes-3-llama-3.1-8b-q8_0.gguf \
+  --ctx-size 32768 \
+  --flash-attn on \
+  -ngl 99
+\`\`\`
+
+At 32K context you get 18.9 t/s with VRAM at 88.7% — within safe range.
+Enabling flash attention (which you already have) is the single highest-ROI
+flag for your setup.
 ```
+
+To use a different LLM, set the endpoint via environment variables:
+
+```bash
+# Ollama
+TYPHON_LLM_URL=http://localhost:11434 TYPHON_LLM_MODEL=llama3 typhon-ask
+
+# OpenAI
+TYPHON_LLM_URL=https://api.openai.com/v1 TYPHON_LLM_KEY=sk-... TYPHON_LLM_MODEL=gpt-4o typhon-ask
+```
+
+See [typhon-ask](cli/ask.md) for the full configuration reference.
 
 ---
 
 ## What's next
 
-- Run `typhon-run --full` a few more times with different models to improve Oracle accuracy
+- Run `typhon-run --full` for the complete test suite including memory wall detection
 - Use `typhon-export` to contribute your data to the community dataset
-- Try the [REST API](api/index.md) if you want to integrate Typhon with an agent workflow
+- Try the [REST API](api/index.md) for agent and automation workflows — see [AGENTS.md](https://github.com/IAcriolla/typhon-stress-test/blob/main/AGENTS.md)

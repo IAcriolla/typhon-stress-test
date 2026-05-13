@@ -46,9 +46,9 @@ All responses are JSON. Errors use standard HTTP status codes:
 |---|---|
 | `200` | OK |
 | `202` | Accepted — job created, running in background |
-| `404` | Resource not found (job ID, missing model file) |
-| `422` | Unprocessable — e.g. not enough data to train |
-| `503` | Service unavailable — e.g. missing Oracle dependencies |
+| `404` | Resource not found (job ID, missing profile or benchmark data) |
+| `502` | LLM request failed (server unreachable or returned an error) |
+| `503` | Service unavailable — `openai` package not installed |
 
 ---
 
