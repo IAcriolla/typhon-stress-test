@@ -2,7 +2,7 @@
   <img src="assets/banner.jpg" alt="Typhon" width="520"/>
   <br/><br/>
 
-  <strong>In the age before order, when the gods themselves trembled, there was Typhon —<br/>the last great monster, father of storms, destroyer of certainty.<br/>He did not ask whether the mountain could withstand him. He simply pushed.</strong>
+  <strong>In the age before order, when the gods themselves trembled, there was **Typhon**, <br/>the last great monster, father of storms, destroyer of certainty.<br/>He did not ask whether the mountain could withstand him. He simply pushed.</strong>
 
   <br/><br/>
 
