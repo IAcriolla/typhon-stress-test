@@ -1,5 +1,9 @@
 # Installation
 
+*Before the storm, the tools must be forged.*
+
+---
+
 ## Requirements
 
 | Requirement | Version |
@@ -8,7 +12,7 @@
 | pip | any recent |
 | An LLM server | See [Supported Servers](supported-servers.md) |
 
-Typhon does **not** require a GPU to install or scan — but a GPU is needed to get meaningful benchmark data.
+Typhon does not require a GPU to install or scan — but a GPU is required to face the full trial and get meaningful benchmark data.
 
 ---
 
@@ -54,17 +58,17 @@ All dependencies are declared in `pyproject.toml` and installed automatically by
 
 | Package | Purpose |
 |---|---|
-| `requests` | HTTP client for LLM server communication and scanner |
+| `requests` | HTTP — speaks to LLM servers and feeds the scanner |
 | `psutil` | CPU and RAM detection |
-| `openai` | OpenAI-compatible client for `typhon-ask` (works with any local LLM too) |
-| `fastapi` | REST API server |
-| `uvicorn` | ASGI server for the REST API |
+| `openai` | OpenAI-compatible client for `typhon-ask` — works with any local LLM |
+| `fastapi` | The herald API server |
+| `uvicorn` | ASGI server that runs FastAPI |
 
 ---
 
 ## Optional: nvidia-smi
 
-GPU monitoring (VRAM, temperature, power draw, utilization) requires `nvidia-smi`, which ships with the NVIDIA driver. Typhon detects it automatically — if it's missing, GPU stats fields will be empty in the benchmark results.
+GPU monitoring — VRAM, temperature, power draw, utilization — requires `nvidia-smi`, which ships with the NVIDIA driver. Typhon detects it automatically. Without it, those fields will be absent from benchmark results. The trial still runs; it just fights partially blind.
 
 Verify:
 ```bash
@@ -82,4 +86,4 @@ git pull
 pip install -e .   # re-registers entry points if they changed
 ```
 
-Your `data/` directory is gitignored and will not be touched by a pull.
+Your `data/` directory is gitignored and will not be touched by a pull. The chronicle survives.

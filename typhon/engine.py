@@ -405,11 +405,11 @@ def main():
         print("  ❌ No hardware profile found. Run: typhon-scan")
         exit(1)
 
-    profile = json.loads(PROFILE_PATH.read_text())
+    profile = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
     run_data = run_benchmarks(profile, args.mode)
 
     if run_data:
-        LAST_RUN_PATH.write_text(json.dumps(run_data, indent=2))
+        LAST_RUN_PATH.write_text(json.dumps(run_data, indent=2), encoding="utf-8")
         print(f"  ✅ Results saved to {LAST_RUN_PATH}")
     else:
         exit(1)

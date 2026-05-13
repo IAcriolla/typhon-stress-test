@@ -1,6 +1,6 @@
 # Job Lifecycle
 
-Benchmark jobs move through four states:
+*A benchmark job moves like a storm front. It builds, it rages, it passes — and it leaves a record.*
 
 ```
 pending → running → done
@@ -9,14 +9,14 @@ pending → running → done
 
 ---
 
-## State descriptions
+## States
 
-| State | Meaning |
+| State | What it means |
 |---|---|
-| `pending` | Job created, background thread not yet started |
-| `running` | Benchmark is executing. `progress` is updated after each test completes. |
-| `done` | All phases complete. `result` contains the full output. |
-| `error` | Benchmark failed. `error` contains the exception message. |
+| `pending` | The herald has been dispatched. The storm has not yet begun. |
+| `running` | The trial is underway. `progress` updates after each test completes. |
+| `done` | The storm has passed. `result` holds the full chronicle. |
+| `error` | Something broke the trial. `error` contains what went wrong. |
 
 ---
 
@@ -28,12 +28,12 @@ import requests
 
 BASE = "http://127.0.0.1:8000"
 
-# Start a quick benchmark
+# Dispatch the herald
 resp = requests.post(f"{BASE}/jobs/run", params={"mode": "quick"})
 job_id = resp.json()["job_id"]
 print(f"Job started: {job_id}")
 
-# Poll until done
+# Wait for the storm to pass
 while True:
     job = requests.get(f"{BASE}/jobs/{job_id}").json()
     p = job["progress"]
@@ -53,7 +53,7 @@ else:
 
 ---
 
-## Progress object
+## Progress
 
 While `status == "running"`, the `progress` field is updated after each benchmark test completes:
 
@@ -65,13 +65,13 @@ While `status == "running"`, the `progress` field is updated after each benchmar
 }
 ```
 
-`total` is set once the test plan is built (after the scan phase, before the first inference). `done` increments by 1 after each test finishes.
+`total` is set once the test plan is forged — after scan, before the first inference. `done` increments by 1 after each test finishes.
 
 ---
 
-## Result structure
+## The result
 
-When `status == "done"`, `result` contains the full structured benchmark output:
+When `status == "done"`, `result` carries the full structured chronicle:
 
 ```json
 {
@@ -112,9 +112,9 @@ When `status == "done"`, `result` contains the full structured benchmark output:
     }
   ],
   "profile_snapshot": {
-    "gpus": [ ... ],
-    "cpu": { ... },
-    "ram": { ... }
+    "gpus": [ "..." ],
+    "cpu": { "..." },
+    "ram": { "..." }
   }
 }
 ```
@@ -123,18 +123,18 @@ When `status == "done"`, `result` contains the full structured benchmark output:
 
 ## Persistence
 
-Even though jobs are in-memory, results are always persisted to disk before the job transitions to `done`:
+Jobs live in memory — a server restart clears the list. But the storm's record is always written to disk before a job transitions to `done`:
 
-- `data/last_run.json` — the full result JSON
-- `data/chronicle.jsonl` — flattened rows appended for Oracle training
+- `data/last_run.json` — the full result
+- `data/chronicle.jsonl` — flattened rows appended to the growing record
 
-If the server restarts, the job list is empty but the data files are intact.
+The herald list may be gone. The chronicle is not.
 
 ---
 
-## Error handling
+## Error states
 
-If the benchmark fails (no server detected, OOM on the first test, exception in the engine), the job transitions to `error`:
+If the trial breaks — no server detected, OOM on the first test, exception in the engine — the job falls to `error`:
 
 ```json
 {
@@ -148,6 +148,6 @@ Common causes:
 
 | Error | Cause |
 |---|---|
-| `No LLM server detected` | Server not running, or running on a non-standard port |
-| `connection_refused` | Server crashed during benchmark (likely OOM) |
-| `timeout` | Inference took > 120 seconds — context too large or model too slow |
+| `No LLM server detected` | Server not running, or answering on an unexpected port |
+| `connection_refused` | Server crashed during the trial — likely OOM |
+| `timeout` | Inference took > 120 seconds — context too large or model too slow for that context |

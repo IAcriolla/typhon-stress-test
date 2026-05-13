@@ -11,6 +11,7 @@ standalone shell commands after `pip install -e .`
   typhon-ask         →  get LLM-powered recommendations
   typhon-export      →  export anonymized data for community
   typhon-api         →  start the REST API server
+  typhon-zeus        →  extreme context stress test (128K / 256K tokens)
 """
 
 import sys
@@ -111,14 +112,14 @@ examples:
     print("PHASE 1/3 — Running benchmark suite")
     print("─" * 50)
     import json
-    profile = json.loads(profile_path.read_text())
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
     from typhon.engine import run_benchmarks
     run_data = run_benchmarks(profile, mode)
     if not run_data:
         print("❌ Benchmark failed.")
         sys.exit(1)
     last_run_path = DATA_DIR / "last_run.json"
-    last_run_path.write_text(json.dumps(run_data, indent=2))
+    last_run_path.write_text(json.dumps(run_data, indent=2), encoding="utf-8")
 
     print("\n" + "─" * 50)
     print("PHASE 2/3 — Recording results to chronicle")
@@ -337,3 +338,96 @@ examples:
         port=args.port,
         reload=args.reload,
     )
+
+
+# ════════════════════════════════════════════════════════════════
+# typhon-zeus
+# ════════════════════════════════════════════════════════════════
+
+def cmd_zeus():
+    _print_banner()
+    _ensure_data_dir()
+
+    parser = argparse.ArgumentParser(
+        prog="typhon-zeus",
+        description="Extreme context stress test at 128K and 256K tokens.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+At extreme context sizes, PREFILL TIME (TTFT) is the key metric — not generation TPS.
+Zeus sends a synthetic prompt sized to fill the target context window and measures:
+  - TTFT: how long the server takes to process the full input (prefill phase)
+  - Gen TPS: generation throughput after the prefill completes
+  - Peak VRAM: KV cache pressure at extreme sequence lengths
+
+REQUIREMENT: your server must be started with a matching context window.
+  llama-server:  --ctx-size 262144 --model /path/to/model.gguf
+  LM Studio:     Settings → Context Length → 262144
+  Ollama:        context is set per-model; check with `ollama show <model>`
+
+Each test has a 10-minute timeout. Total runtime: up to 20+ minutes.
+
+examples:
+  typhon-zeus
+  typhon-zeus --128k          test 128K only
+        """,
+    )
+    parser.add_argument(
+        "--128k", dest="only_128k", action="store_true",
+        help="Run the 128K test only (skip 256K).",
+    )
+    args = parser.parse_args()
+
+    import json
+    from datetime import datetime
+
+    profile_path = DATA_DIR / "hardware_profile.json"
+    if not profile_path.exists():
+        print("⚡ No hardware profile found. Running scan first...\n")
+        from typhon.scanner import scan
+        if not scan():
+            print("❌ Scan failed. Cannot continue.")
+            sys.exit(1)
+        print()
+
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+
+    contexts = [131_072] if args.only_128k else [131_072, 262_144]
+    ctx_labels = " and ".join(f"{c // 1024}K" for c in contexts)
+
+    print("""
+  ╔══════════════════════════════════════════════════════════════╗
+  ║                  ⚡  YOU FACE ZEUS  ⚡                       ║
+  ║                                                              ║
+  ║  Terrible things could happen.                               ║
+  ║  Your server may crash. Your GPU may thermal-throttle.       ║
+  ║  This will consume every byte of VRAM you have.              ║
+  ║                                                              ║
+  ║  Save everything you need before it's too late.              ║
+  ╚══════════════════════════════════════════════════════════════╝
+""")
+
+    try:
+        confirm = input("  Type YES to proceed, anything else to abort: ").strip()
+    except (KeyboardInterrupt, EOFError):
+        print("\n  Wise choice. Another day.")
+        sys.exit(0)
+
+    if confirm != "YES":
+        print("\n  Wise choice. Another day.")
+        sys.exit(0)
+
+    print()
+
+    from typhon.zeus import run_zeus
+    zeus_data = run_zeus(profile, contexts=contexts)
+
+    if not zeus_data or not zeus_data.get("results"):
+        print("❌ Zeus stress test failed.")
+        sys.exit(1)
+
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    out_path = DATA_DIR / f"zeus_run_{ts}.json"
+    out_path.write_text(json.dumps(zeus_data, indent=2), encoding="utf-8")
+
+    print(f"✅ Zeus results saved to {out_path}")
+    sys.exit(0)

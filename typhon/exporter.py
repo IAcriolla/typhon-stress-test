@@ -35,7 +35,7 @@ def export():
         print("  ❌ No chronicle data found. Run benchmarks first.")
         exit(1)
 
-    rows = [json.loads(l) for l in CHRONICLE_PATH.read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in CHRONICLE_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
     if not rows:
         print("  ❌ Chronicle is empty.")
         exit(1)
@@ -64,7 +64,7 @@ def export():
         "data": clean_rows,
     }
 
-    out_path.write_text(json.dumps(export_data, indent=2))
+    out_path.write_text(json.dumps(export_data, indent=2), encoding="utf-8")
     print(f"  ✅ Exported {len(clean_rows)} records → {out_path}")
     print()
     print("  To contribute to the community dataset:")

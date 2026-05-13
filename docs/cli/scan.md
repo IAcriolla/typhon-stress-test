@@ -1,6 +1,6 @@
 # typhon-scan
 
-Detect and save your complete hardware and software profile.
+*Before the storm, walk the terrain. Know your GPU. Know your RAM. Know which servers answer your call. Typhon does not fight blind.*
 
 ```bash
 typhon-scan
@@ -8,9 +8,9 @@ typhon-scan
 
 ---
 
-## What it detects
+## What it surveys
 
-| Category | Data collected |
+| Category | What is learned |
 |---|---|
 | **GPU** | Name, total VRAM (MB and GB), driver version, compute capability |
 | **CPU** | Model name, physical cores, logical cores, architecture |
@@ -18,9 +18,9 @@ typhon-scan
 | **LLM servers** | Running servers on known ports, loaded model names |
 | **Python packages** | Versions of all Typhon dependencies |
 
-### LLM server detection
+### Server detection
 
-Typhon probes six ports **in parallel** (so detection takes ~2 seconds regardless of how many are running):
+Typhon knocks on six doors **in parallel** — so the whole survey takes ~2 seconds regardless of how many are open:
 
 | Server | Port |
 |---|---|
@@ -31,13 +31,13 @@ Typhon probes six ports **in parallel** (so detection takes ~2 seconds regardles
 | text-generation-webui | 5000 |
 | Jan | 1337 |
 
-For each running server it also fetches the loaded model list from `/v1/models` (or the equivalent endpoint).
+For each server that answers, Typhon also reads the loaded model list from `/v1/models`.
 
 ---
 
-## Output
+## The profile
 
-The profile is saved to `data/hardware_profile.json`.
+Everything is sealed into `data/hardware_profile.json` and carried into every subsequent command.
 
 ```json
 {
@@ -69,11 +69,6 @@ The profile is saved to `data/hardware_profile.json`.
       "models": ["hermes-3-llama-3.1-8b-q8_0"]
     }
   ],
-  "python_packages": {
-    "xgboost": "2.1.0",
-    "scikit-learn": "1.4.0",
-    ...
-  },
   "python_version": "3.11.5"
 }
 ```
@@ -84,17 +79,16 @@ The profile is saved to `data/hardware_profile.json`.
 
 - After installing a new GPU
 - After upgrading drivers
-- After changing which LLM server you use
-- After switching to a different model (the model name is recorded at scan time)
+- After switching to a different LLM server or model
 
-`typhon-run` auto-scans if no profile exists yet, so you rarely need to call this directly.
+`typhon-run` scans automatically if no profile exists — you rarely need to call this directly.
 
 ---
 
 ## Notes
 
-!!! tip
-    The scan takes ~2–5 seconds total. LLM server detection runs all port probes concurrently, so it does not block waiting for non-running services.
+!!! tip "Speed"
+    The scan takes ~2–5 seconds total. All port probes run concurrently — no waiting for dead servers.
 
-!!! warning
-    If `nvidia-smi` is not on your PATH, GPU stats (temperature, power draw, utilization) will be absent from benchmark results. The scan will still succeed and note the missing tool.
+!!! warning "nvidia-smi not found"
+    If `nvidia-smi` is not on your PATH, GPU temperature, power draw, and utilization will be absent from benchmark results. The scan succeeds and notes the absence, but the trial will be fought without those eyes open.

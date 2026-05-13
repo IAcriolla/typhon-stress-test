@@ -286,7 +286,7 @@ def scan():
         "python_version": platform.python_version(),
     }
 
-    PROFILE_PATH.write_text(json.dumps(profile, indent=2))
+    PROFILE_PATH.write_text(json.dumps(profile, indent=2), encoding="utf-8")
     return profile
 
 if __name__ == "__main__":

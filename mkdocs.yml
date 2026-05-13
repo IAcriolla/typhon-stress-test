@@ -68,6 +68,7 @@ nav:
     - typhon-ask: cli/ask.md
     - typhon-export: cli/export.md
     - typhon-api: cli/api-server.md
+    - typhon-zeus: cli/zeus.md
   - REST API:
     - Overview: api/index.md
     - Endpoint Reference: api/reference.md

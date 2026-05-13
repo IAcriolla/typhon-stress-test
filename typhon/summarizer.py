@@ -214,12 +214,12 @@ def summarize() -> Path | None:
         print("  ❌ No hardware profile found. Run: typhon-scan")
         return None
 
-    run     = json.loads(LAST_RUN_PATH.read_text())
-    profile = json.loads(PROFILE_PATH.read_text())
+    run     = json.loads(LAST_RUN_PATH.read_text(encoding="utf-8"))
+    profile = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     out_path  = DATA_DIR / f"typhon-summary-{timestamp}.md"
 
-    out_path.write_text(build_summary(run, profile))
+    out_path.write_text(build_summary(run, profile), encoding="utf-8")
     print(f"  ✅ Summary saved: {out_path}")
     return out_path

@@ -90,21 +90,21 @@ def main():
         print("  ❌ No last_run.json found. Run benchmarks first.")
         exit(1)
 
-    run = json.loads(LAST_RUN_PATH.read_text())
+    run = json.loads(LAST_RUN_PATH.read_text(encoding="utf-8"))
     rows = flatten_run(run)
 
     if not rows:
         print("  ⚠️  No successful benchmark results to save.")
         exit(0)
 
-    with open(CHRONICLE_PATH, "a") as f:
+    with open(CHRONICLE_PATH, "a", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row) + "\n")
 
     print(f"  ✅ {len(rows)} records added to chronicle ({CHRONICLE_PATH})")
-    
+
     # Show total record count
-    total = sum(1 for _ in open(CHRONICLE_PATH))
+    total = sum(1 for _ in open(CHRONICLE_PATH, encoding="utf-8"))
     print(f"  📚 Total records in chronicle: {total}")
 
 if __name__ == "__main__":

@@ -16,14 +16,14 @@ OUTPUT_PATH    = ROOT / "typhon-dashboard.html"
 
 def load_last_run() -> dict:
     if LAST_RUN_PATH.exists():
-        return json.loads(LAST_RUN_PATH.read_text())
+        return json.loads(LAST_RUN_PATH.read_text(encoding="utf-8"))
     return {}
 
 
 def load_chronicle() -> list:
     if not CHRONICLE_PATH.exists():
         return []
-    return [json.loads(l) for l in CHRONICLE_PATH.read_text().splitlines() if l.strip()]
+    return [json.loads(l) for l in CHRONICLE_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
 def build_data(run: dict, chronicle: list) -> dict:
@@ -545,7 +545,7 @@ def main():
         run = {}
     d    = build_data(run, chronicle)
     html = generate_html(d)
-    OUTPUT_PATH.write_text(html)
+    OUTPUT_PATH.write_text(html, encoding="utf-8")
     print(f"  ✅ Dashboard saved: {OUTPUT_PATH}")
 
 

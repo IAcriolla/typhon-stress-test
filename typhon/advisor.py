@@ -204,8 +204,8 @@ def ask_data(stream: bool = True) -> dict:
     if not LAST_RUN_PATH.exists():
         raise FileNotFoundError("No benchmark data. Run: typhon-run")
 
-    profile  = json.loads(PROFILE_PATH.read_text())
-    last_run = json.loads(LAST_RUN_PATH.read_text())
+    profile  = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+    last_run = json.loads(LAST_RUN_PATH.read_text(encoding="utf-8"))
 
     cfg   = _cfg()
     url   = cfg["url"] or _detect_url(profile)

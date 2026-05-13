@@ -1,6 +1,6 @@
 # Quick Start
 
-This guide walks you through a complete first run from install to recommendations in under 25 minutes.
+*Every storm begins the same way: with a moment of stillness before the first thunderclap. This is that moment. Follow the rites, and in under 25 minutes you will know exactly what your hardware is made of.*
 
 ---
 
@@ -14,9 +14,9 @@ pip install -e .
 
 ---
 
-## 2. Start your LLM server
+## 2. Wake your server
 
-Typhon benchmarks over the OpenAI-compatible `/v1/chat/completions` endpoint. Start your server before running any Typhon command.
+Typhon speaks only to servers that answer on the OpenAI-compatible `/v1/chat/completions` endpoint. Rouse your chosen champion before the trial begins.
 
 === "llama.cpp (recommended)"
 
@@ -40,17 +40,17 @@ Typhon benchmarks over the OpenAI-compatible `/v1/chat/completions` endpoint. St
 
     Start LM Studio, load a model, and enable the local server from the **Local Server** tab (port 1234 by default).
 
-See [Supported Servers](supported-servers.md) for the full list.
+See [Supported Servers](supported-servers.md) for all champions Typhon can work with.
 
 ---
 
-## 3. Scan your hardware
+## 3. Survey the battlefield
 
 ```bash
 typhon-scan
 ```
 
-Expected output:
+Before any storm, Typhon walks the terrain — GPU, CPU, RAM, running servers. Nothing proceeds without knowing what it's working with.
 
 ```
   Detecting GPU(s)...
@@ -73,23 +73,23 @@ Expected output:
 ✅ Scan complete — saved to data/hardware_profile.json
 ```
 
-The profile is saved to `data/hardware_profile.json`. You only need to re-scan if your hardware or server setup changes.
+The profile is sealed in `data/hardware_profile.json`. Re-scan only if your hardware or server changes.
 
 ---
 
-## 4. Run the benchmark suite
+## 4. Unleash the storm
 
 ```bash
-typhon-run --quick   # ~3–5 min for a first look
+typhon-run --quick   # a first taste — ~3–5 min
 ```
 
-Or run the full suite for complete data:
+Or commit fully:
 
 ```bash
-typhon-run           # ~15–20 min, default
+typhon-run           # the full trial — ~15–20 min, default
 ```
 
-Typhon runs 3 phases automatically:
+Typhon moves in three waves:
 
 ```
 ─────────────────────────────────────────
@@ -119,27 +119,27 @@ PHASE 3/3 — Generating interactive dashboard
 🤖 Ask LLM   : typhon-ask
 ```
 
-The dashboard opens in your browser automatically.
+The dashboard opens in your browser. The storm has passed. Now read what it left behind.
 
 ---
 
-## 5. Get a Markdown summary
+## 5. Inscribe the chronicle
 
 ```bash
 typhon-summary
 ```
 
-Writes `data/typhon-summary-<timestamp>.md` with a hardware table, per-context TPS/VRAM/temperature breakdown, key findings, and a suggested llama-server configuration based on your actual measured data.
+Writes `data/typhon-summary-<timestamp>.md` — a complete record of what happened: hardware, per-context TPS/VRAM/temperature, key findings, and a suggested server configuration derived from your actual measured data. Not theory. Proof.
 
 ---
 
-## 6. Ask an LLM for recommendations
+## 6. Consult the oracle
 
 ```bash
 typhon-ask
 ```
 
-Typhon sends your benchmark results to the same local LLM server you just measured — no API key or extra configuration needed. The response streams directly to your terminal:
+Typhon sends your results to the same local LLM you just measured — no API key, no ceremony. The response streams directly to your terminal:
 
 ```
   Endpoint : http://localhost:8080
@@ -162,11 +162,9 @@ memory swapping until past 32K tokens...
 \`\`\`
 
 At 32K context you get 18.9 t/s with VRAM at 88.7% — within safe range.
-Enabling flash attention (which you already have) is the single highest-ROI
-flag for your setup.
 ```
 
-To use a different LLM, set the endpoint via environment variables:
+To consult a different oracle, name the endpoint:
 
 ```bash
 # Ollama
@@ -176,12 +174,13 @@ TYPHON_LLM_URL=http://localhost:11434 TYPHON_LLM_MODEL=llama3 typhon-ask
 TYPHON_LLM_URL=https://api.openai.com/v1 TYPHON_LLM_KEY=sk-... TYPHON_LLM_MODEL=gpt-4o typhon-ask
 ```
 
-See [typhon-ask](cli/ask.md) for the full configuration reference.
+See [typhon-ask](cli/ask.md) for the full configuration.
 
 ---
 
-## What's next
+## What awaits beyond
 
-- Run `typhon-run --full` for the complete test suite including memory wall detection
-- Use `typhon-export` to contribute your data to the community dataset
-- Try the [REST API](api/index.md) for agent and automation workflows — see [AGENTS.md](https://github.com/IAcriolla/typhon-stress-test/blob/main/AGENTS.md)
+- `typhon-run --full` — the complete trial, including memory wall detection at the edge of your VRAM
+- `typhon-export` — add your findings to the community chronicle
+- `typhon-zeus` — if you are bold enough to push past 128K tokens, the god of thunder waits
+- [REST API](api/index.md) — send automated heralds into the storm

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "typhon-llm"
-version = "2.1.0"
+version = "2.2.0"
 description = "Local LLM stress testing and optimization suite"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -44,6 +44,7 @@ typhon-summary    = "typhon.cli:cmd_summary"
 typhon-ask        = "typhon.cli:cmd_ask"
 typhon-export     = "typhon.cli:cmd_export"
 typhon-api        = "typhon.cli:cmd_api"
+typhon-zeus       = "typhon.cli:cmd_zeus"
 
 [tool.setuptools.packages.find]
 where   = ["."]

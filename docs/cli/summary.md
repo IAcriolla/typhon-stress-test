@@ -1,26 +1,26 @@
 # typhon-summary
 
-Write a Markdown summary of the last benchmark run.
+*A storm that leaves no record is just noise. The chronicle is what separates a trial from a guess.*
 
 ```bash
 typhon-summary
 ```
 
-Generates a structured `.md` file in `data/` with:
+Writes a structured Markdown report to `data/` containing everything the trial uncovered:
 
 - Hardware profile table
-- Baseline results (peak TPS, VRAM, temperature)
-- Context sweep table (TPS, VRAM, latency at each context size)
-- Stress test results
+- Baseline results — peak TPS, VRAM, temperature at rest
+- Context sweep table — TPS, VRAM, and latency at each tested context size
+- Long generation stress results
 - Memory wall findings (full mode)
 - Key findings derived from the data
-- A suggested llama-server configuration
+- A suggested llama-server configuration built from what was actually measured — not assumed
 
-## Output
+---
 
-The file is written to `data/typhon-summary-<timestamp>.md`. You can open it in any Markdown viewer, commit it to your repo, or share it.
+## The scroll
 
-## Example output
+Written to `data/typhon-summary-<timestamp>.md`. Open it in any Markdown viewer, commit it to your repo, or share it.
 
 ```markdown
 # Typhon Benchmark Summary
@@ -50,7 +50,7 @@ The file is written to `data/typhon-summary-<timestamp>.md`. You can open it in 
 
 - Peak throughput: **82.4 t/s** at baseline (2K context)
 - At 32,768 tokens: 18.9 t/s (77% drop from baseline)
-- VRAM healthy at ≤ 88.7% — headroom for larger contexts
+- VRAM healthy at ≤ 88.7% — headroom remains for larger contexts
 
 ## Suggested Configuration
 
@@ -63,4 +63,4 @@ The file is written to `data/typhon-summary-<timestamp>.md`. You can open it in 
 \`\`\`
 ```
 
-For deeper analysis and personalized recommendations, run `typhon-ask` after generating the summary.
+For deeper analysis and a spoken interpretation of what these numbers mean, follow with `typhon-ask`.

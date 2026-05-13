@@ -77,7 +77,7 @@ def _run_job(job_id: str, mode: str) -> None:
             from typhon.scanner import scan
             scan()
 
-        profile = json.loads(profile_path.read_text())
+        profile = json.loads(profile_path.read_text(encoding="utf-8"))
 
         def on_progress(done: int, total: int, current: str) -> None:
             job["progress"] = {"done": done, "total": total, "current_test": current}
@@ -90,12 +90,12 @@ def _run_job(job_id: str, mode: str) -> None:
             job["error"] = "No LLM server detected or benchmark produced no results."
             return
 
-        (DATA_DIR / "last_run.json").write_text(json.dumps(result, indent=2))
+        (DATA_DIR / "last_run.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 
         from typhon.scribe import flatten_run, CHRONICLE_PATH
         rows = flatten_run(result)
         if rows:
-            with open(CHRONICLE_PATH, "a") as f:
+            with open(CHRONICLE_PATH, "a", encoding="utf-8") as f:
                 for row in rows:
                     f.write(json.dumps(row) + "\n")
 
@@ -163,8 +163,8 @@ def get_report():
     if not last_run_path.exists():
         raise HTTPException(status_code=404, detail="No benchmark data. Run POST /jobs/run first.")
 
-    profile  = json.loads(profile_path.read_text())
-    last_run = json.loads(last_run_path.read_text())
+    profile  = json.loads(profile_path.read_text(encoding="utf-8"))
+    last_run = json.loads(last_run_path.read_text(encoding="utf-8"))
 
     gpus     = profile.get("gpus", [{}])
     gpu0     = gpus[0] if gpus else {}
