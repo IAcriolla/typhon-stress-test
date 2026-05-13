@@ -40,16 +40,16 @@ def _cfg() -> dict:
 
 
 def _detect_url(profile: dict) -> str:
-    for srv in profile.get("servers", []):
-        if srv.get("status") == "online" and srv.get("url"):
-            return srv["url"].rstrip("/")
+    for srv in profile.get("llm_servers", []):
+        if srv.get("status") == "running" and srv.get("api_base"):
+            return srv["api_base"].rstrip("/")
     return "http://localhost:8080"
 
 
 def _detect_model(profile: dict, last_run: dict) -> str:
     if last_run.get("model"):
         return last_run["model"]
-    for srv in profile.get("servers", []):
+    for srv in profile.get("llm_servers", []):
         if srv.get("models"):
             return srv["models"][0]
     return ""

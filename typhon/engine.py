@@ -14,6 +14,8 @@ import threading
 from pathlib import Path
 from datetime import datetime
 
+from typhon.prompt_factory import build_context_prompt, estimated_tokens
+
 ROOT = Path(__file__).parent.parent
 DATA_DIR = ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -164,20 +166,32 @@ def build_test_plan(profile: dict, mode: str) -> list:
         "n_runs": 3,
     })
 
-    # TPS vs context size sweep
+    # TPS vs context size sweep — prompt fills the target context window so the
+    # benchmark actually measures performance at that context size, not just
+    # throughput with a short prompt on a large-context server.
     for ctx in ctx_sizes:
+        max_tok = 256
+        # Leave max_tok + 128 token buffer for the model's output and overhead.
+        input_tokens = max(64, ctx - max_tok - 128)
+        prompt = build_context_prompt(input_tokens)
+        # Dynamic timeout: larger contexts take longer to prefill.
+        # Formula: at least 120s, plus ~5s per 1K input tokens.
+        ctx_timeout = max(120, (input_tokens // 1000) * 5 + 120)
         tests.append({
             "id": f"ctx_sweep_{ctx}",
             "name": f"Context sweep — {ctx:,} tokens",
-            "description": f"Measures TPS and VRAM usage at {ctx:,} tokens of context.",
+            "description": f"Measures TPS and VRAM with a prompt that fills {ctx:,} tokens of context.",
             "category": "context_sweep",
-            "prompt": PROMPTS["medium"],
+            "prompt": prompt,
+            "estimated_prompt_tokens": estimated_tokens(prompt),
             "ctx_size": ctx,
-            "max_tokens": 256,
+            "max_tokens": max_tok,
             "n_runs": 2 if mode == "quick" else 3,
+            "timeout": ctx_timeout,
         })
 
-    # Long generation stress
+    # Long generation stress — keeps a short prompt, maximizes output length.
+    # This measures sustained decode throughput, not prefill.
     tests.append({
         "id": "long_gen",
         "name": "Long generation stress",
@@ -187,19 +201,26 @@ def build_test_plan(profile: dict, mode: str) -> list:
         "ctx_size": 8192,
         "max_tokens": 1024,
         "n_runs": 2,
+        "timeout": 180,
     })
 
-    # Memory wall hunt (only in full mode)
+    # Memory wall hunt — fill the maximum context to find the VRAM ceiling.
     if mode == "full" and vram_gb >= 8:
+        max_tok = 512
+        input_tokens = max(64, ctx_sizes[-1] - max_tok - 128)
+        prompt = build_context_prompt(input_tokens)
+        ctx_timeout = max(180, (input_tokens // 1000) * 5 + 180)
         tests.append({
             "id": "memory_wall",
             "name": "Memory wall detection",
-            "description": "Pushes context size to the maximum to find the VRAM ceiling.",
+            "description": "Fills the maximum context to find where VRAM is exhausted.",
             "category": "memory_wall",
-            "prompt": PROMPTS["very_long"],
+            "prompt": prompt,
+            "estimated_prompt_tokens": estimated_tokens(prompt),
             "ctx_size": ctx_sizes[-1],
-            "max_tokens": 512,
+            "max_tokens": max_tok,
             "n_runs": 1,
+            "timeout": ctx_timeout,
         })
 
     return tests
@@ -208,7 +229,10 @@ def build_test_plan(profile: dict, mode: str) -> list:
 # Single inference runner
 # ──────────────────────────────────────────────
 
-def run_inference(api_base: str, model: str, prompt: str, ctx_size: int, max_tokens: int) -> dict:
+def run_inference(
+    api_base: str, model: str, prompt: str, ctx_size: int, max_tokens: int,
+    timeout: int = 120,
+) -> dict:
     """Send one streaming inference request and return timing metrics including TTFT."""
     payload = {
         "model": model,
@@ -224,13 +248,14 @@ def run_inference(api_base: str, model: str, prompt: str, ctx_size: int, max_tok
     tokens_generated = 0
     prompt_tokens = 0
     total_tokens = 0
+    got_server_usage = False
 
     try:
         with requests.post(
             f"{api_base}/v1/chat/completions",
             json=payload,
             stream=True,
-            timeout=120,
+            timeout=timeout,
         ) as resp:
             resp.raise_for_status()
             for raw in resp.iter_lines():
@@ -252,17 +277,17 @@ def run_inference(api_base: str, model: str, prompt: str, ctx_size: int, max_tok
                     if content:
                         if ttft_s is None:
                             ttft_s = time.perf_counter() - start
-                        tokens_generated += 1  # proxy; overridden by usage field when present
+                        tokens_generated += 1  # chunk proxy; overridden by usage below
 
                 usage = chunk.get("usage") or {}
                 if usage.get("completion_tokens"):
                     tokens_generated = usage["completion_tokens"]
                     prompt_tokens = usage.get("prompt_tokens", 0)
                     total_tokens = usage.get("total_tokens", 0)
+                    got_server_usage = True
 
         end = time.perf_counter()
         elapsed = end - start
-        # Exclude prompt-processing time (TTFT) from generation TPS
         gen_elapsed = elapsed - (ttft_s or 0)
         tps = tokens_generated / gen_elapsed if gen_elapsed > 0 else 0
 
@@ -274,6 +299,10 @@ def run_inference(api_base: str, model: str, prompt: str, ctx_size: int, max_tok
             "prompt_tokens": prompt_tokens,
             "total_tokens": total_tokens or (prompt_tokens + tokens_generated),
             "tps": round(tps, 2),
+            # Tells consumers how reliable the token count is.
+            # "server_usage" = exact count from the server's usage field.
+            # "chunk_estimate" = we counted content chunks, not tokens (unreliable).
+            "token_count_source": "server_usage" if got_server_usage else "chunk_estimate",
         }
     except requests.exceptions.Timeout:
         return {"success": False, "error": "timeout"}
@@ -326,6 +355,7 @@ def run_benchmarks(profile: dict, mode: str, on_progress=None) -> dict:
                 test["prompt"],
                 test["ctx_size"],
                 test["max_tokens"],
+                timeout=test.get("timeout", 120),
             )
             run_results.append(result)
             if result["success"]:
@@ -358,12 +388,17 @@ def run_benchmarks(profile: dict, mode: str, on_progress=None) -> dict:
             avg_tps = avg_time = best_tps = 0
             avg_ttft = None
 
+        # token_count_source: prefer "server_usage" if any timed run got it.
+        sources = [r.get("token_count_source") for r in timed_runs if r.get("token_count_source")]
+        token_count_source = "server_usage" if "server_usage" in sources else (sources[0] if sources else "chunk_estimate")
+
         results.append({
             "test_id": test["id"],
             "name": test["name"],
             "description": test["description"],
             "category": test["category"],
             "ctx_size": test["ctx_size"],
+            "estimated_prompt_tokens": test.get("estimated_prompt_tokens"),
             "max_tokens": test["max_tokens"],
             "n_runs": test["n_runs"],
             "successful_runs": len(timed_runs),
@@ -371,6 +406,7 @@ def run_benchmarks(profile: dict, mode: str, on_progress=None) -> dict:
             "best_tps": round(best_tps, 2),
             "avg_elapsed_s": round(avg_time, 3),
             "avg_ttft_s": round(avg_ttft, 3) if avg_ttft is not None else None,
+            "token_count_source": token_count_source,
             "warmup_run": warmup_run,
             "runs": timed_runs,
             "gpu_stats": bench_gpu_stats,

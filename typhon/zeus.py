@@ -17,6 +17,8 @@ import requests
 from pathlib import Path
 from datetime import datetime
 
+from typhon.prompt_factory import build_context_prompt, estimated_tokens, CHARS_PER_TOKEN
+
 ROOT = Path(__file__).parent.parent
 DATA_DIR = ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -26,64 +28,8 @@ PROFILE_PATH = DATA_DIR / "hardware_profile.json"
 # Standard power-of-2 extreme context sizes
 ZEUS_CONTEXTS = [131_072, 262_144]  # 128K, 256K tokens
 
-# ~3.8 chars/token is a conservative estimate for English prose
-CHARS_PER_TOKEN = 3.8
-
 # 10-minute timeout — 256K prefill can take several minutes on consumer GPUs
 ZEUS_TIMEOUT = 600
-
-# ──────────────────────────────────────────────
-# Synthetic long prompt generator
-# ──────────────────────────────────────────────
-
-_PROSE = (
-    "Artificial intelligence has transformed how humans interact with machines. "
-    "Large language models trained on internet-scale text corpora can perform summarization, "
-    "translation, code generation, reasoning, and question answering at a high level of quality. "
-    "The architecture behind most modern LLMs is the transformer, introduced in 2017. "
-    "Transformers use self-attention so every token can attend to every other token in the sequence, "
-    "enabling rich contextual representations regardless of distance in the text. "
-    "Scaling these architectures to billions of parameters with carefully curated training data "
-    "yields emergent capabilities that were not explicitly programmed. "
-    "As context windows grow from thousands to hundreds of thousands of tokens, "
-    "models can reason over entire codebases, books, and legal documents in a single pass. "
-    "Prefill time — the time to process the entire input before generating the first output token — "
-    "scales roughly linearly with input length for standard attention implementations, "
-    "though flash attention and paged KV caches reduce memory pressure significantly. "
-    "KV cache VRAM scales as: layers × heads × head_dim × sequence_length × 2 × dtype_bytes. "
-    "For a typical 8B model (32 layers, 32 heads, 128 head_dim, float16), "
-    "the KV cache at 128K tokens is approximately 4 GB on top of model weights. "
-    "At 256K tokens it doubles to roughly 8 GB. "
-    "This stress test generates a prompt that fills the target context window "
-    "and measures how long the server takes to complete the prefill phase, "
-    "the post-prefill generation throughput in tokens per second, "
-    "and the peak VRAM utilization recorded during the request. "
-)
-
-
-def build_long_prompt(target_tokens: int) -> str:
-    """Generate a synthetic prompt that fills approximately target_tokens input tokens."""
-    target_chars = int(target_tokens * CHARS_PER_TOKEN)
-
-    header = (
-        f"You are an AI assistant undergoing an extreme context stress test at "
-        f"{target_tokens:,} tokens. The following document fills the context window. "
-        "Read it carefully, then answer the question at the end.\n\n"
-        "=== BEGIN DOCUMENT ===\n\n"
-    )
-    footer = (
-        "\n\n=== END DOCUMENT ===\n\n"
-        "In one sentence, what is the main subject of the document above?"
-    )
-
-    body_budget = target_chars - len(header) - len(footer)
-    if body_budget <= 0:
-        return header + footer
-
-    reps = (body_budget // len(_PROSE)) + 1
-    body = (_PROSE * reps)[:body_budget]
-
-    return header + body + footer
 
 
 # ──────────────────────────────────────────────
@@ -217,9 +163,9 @@ def run_zeus(profile: dict, contexts: list = None) -> dict:
         ctx_label = f"{ctx // 1024}K"
         print(f"  ─── {ctx_label} ({ctx:,} tokens) " + "─" * 30)
 
-        prompt = build_long_prompt(ctx)
+        prompt = build_context_prompt(ctx)
         char_count = len(prompt)
-        est_tokens = int(char_count / CHARS_PER_TOKEN)
+        est_tokens = estimated_tokens(prompt)
 
         print(f"  📝  Prompt:   {char_count:,} chars  (~{est_tokens:,} tokens)")
         print(f"  ⏱️   Timeout:  {ZEUS_TIMEOUT}s — prefill at {ctx_label} can take minutes")
