@@ -10,6 +10,7 @@ standalone shell commands after `pip install -e .`
   typhon-train       →  train the XGBoost Oracle model
   typhon-recommend   →  get optimization recommendations
   typhon-export      →  export anonymized data for community
+  typhon-api         →  start the REST API server
 """
 
 import sys
@@ -321,6 +322,59 @@ examples:
 # ════════════════════════════════════════════════════════════════
 # typhon-export
 # ════════════════════════════════════════════════════════════════
+
+def cmd_api():
+    """
+    Start the Typhon REST API server.
+
+    Exposes all Typhon commands as HTTP endpoints. Benchmark jobs run in the
+    background — poll GET /jobs/{job_id} for progress and results.
+
+    Interactive API docs available at http://HOST:PORT/docs once running.
+    """
+    _print_banner()
+
+    parser = argparse.ArgumentParser(
+        prog="typhon-api",
+        description="Start the Typhon REST API server.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+endpoints:
+  GET  /health                   liveness check
+  POST /scan                     detect hardware (sync)
+  POST /jobs/run?mode=quick|full start benchmark job (async)
+  GET  /jobs/{job_id}            job status + progress + result
+  POST /train                    train Oracle models (sync)
+  GET  /recommend                optimization recommendation (JSON)
+
+examples:
+  typhon-api
+  typhon-api --port 9000
+  typhon-api --host 0.0.0.0 --port 8000
+        """,
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
+    parser.add_argument("--reload", action="store_true", help="Auto-reload on code changes (dev only)")
+    args = parser.parse_args()
+
+    try:
+        import uvicorn
+    except ImportError:
+        print("❌ uvicorn not found. Run: pip install 'uvicorn[standard]'")
+        sys.exit(1)
+
+    print(f"🌪️  Typhon API → http://{args.host}:{args.port}")
+    print(f"   Docs       → http://{args.host}:{args.port}/docs")
+    print(f"   Stop       → Ctrl+C\n")
+
+    uvicorn.run(
+        "typhon_api.server:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
+
 
 def cmd_export():
     """

@@ -30,6 +30,8 @@ dependencies = [
     "pandas>=2.0.0",
     "xgboost>=2.0.0",
     "scikit-learn>=1.3.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
 ]
 
 [project.urls]
@@ -44,6 +46,7 @@ typhon-dashboard  = "typhon.cli:cmd_dashboard"
 typhon-train      = "typhon.cli:cmd_train"
 typhon-recommend  = "typhon.cli:cmd_recommend"
 typhon-export     = "typhon.cli:cmd_export"
+typhon-api        = "typhon.cli:cmd_api"
 
 [tool.setuptools.packages.find]
 where   = ["."]
